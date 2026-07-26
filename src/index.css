@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: PinarSemiBold;
+  src: url(./assets/Pinar-SemiBold.woff2);
+}
+
+@font-face {
+  font-family: Pinar-FD;
+  src: url(./assets/Pinar-Regular.woff2);
+}
+
+@font-face {
+  font-family: PinarMedium;
+  src: url(./assets/Pinar-Medium.woff2);
+}

@@ -461,7 +461,7 @@ const AdminDepartmentTab = () => {
                               ? "پروژه‌هایی که زیر دستشه:"
                               : "لیست پروژه‌های فعالش:"}
                           </label>
-                          <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto scrollbar-none pl-0.5">
+                          <div className="flex flex-col gap-1.5 max-h-[150px] overflow-y-auto scrollbar-none pl-0.5">
                             {(
                               selectedDeptUser.projects ||
                               selectedDeptUser.activeProjects ||

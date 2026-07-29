@@ -34,9 +34,6 @@ const RegisterPage = () => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Basic client-side validation. The backend must still re-validate and
-  // enforce uniqueness server-side - this only avoids an obviously bad
-  // round-trip.
   const validate = () => {
     if (formData.password.length < 6) {
       return "رمز عبور باید حداقل ۶ کاراکتر باشد.";
@@ -47,7 +44,11 @@ const RegisterPage = () => {
     if (!/^\S+@\S+\.\S+$/.test(formData.email)) {
       return "ایمیل واردشده معتبر نیست.";
     }
-    if (!/^0\d{10}$/.test(formData.phone.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)))) {
+    if (
+      !/^0\d{10}$/.test(
+        formData.phone.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d)),
+      )
+    ) {
       return "شماره همراه باید ۱۱ رقم و با صفر شروع شود.";
     }
     if (formData.nationalCode.trim().length !== 10) {
@@ -56,9 +57,6 @@ const RegisterPage = () => {
     return "";
   };
 
-  // TODO(API): POST /auth/register { ...formData }. The backend validates
-  // uniqueness of email/phone/nationalCode and returns a tempUserId used to
-  // finalize the account once the role is picked on the next screen.
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationError = validate();
@@ -77,8 +75,9 @@ const RegisterPage = () => {
       return;
     }
 
-    // Move to step 2 (role selection)
-    navigate("/role-selection", { state: { formData, tempUserId: result.tempUserId } });
+    navigate("/role-selection", {
+      state: { formData, tempUserId: result.tempUserId },
+    });
   };
 
   return (
@@ -99,7 +98,7 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {/* Row 1: first name + email */}
+          {/* ردیف ۱: نام (راست‌چین) + ایمیل (چپ‌چین) */}
           <div className="grid grid-cols-2 gap-4">
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
@@ -126,13 +125,13 @@ const RegisterPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
                 }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left"
+                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
           </div>
 
-          {/* Row 2: last name + confirm password */}
+          {/* ردیف ۲: نام خانوادگی (راست‌چین) + رمز عبور (چپ‌چین) */}
           <div className="grid grid-cols-2 gap-4">
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
@@ -151,21 +150,21 @@ const RegisterPage = () => {
 
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
-                تکرار رمز عبور
+                رمز عبور
               </legend>
               <input
                 type="password"
-                value={formData.confirmPassword}
+                value={formData.password}
                 onChange={(e) =>
-                  setFormData({ ...formData, confirmPassword: e.target.value })
+                  setFormData({ ...formData, password: e.target.value })
                 }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-center"
+                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
           </div>
 
-          {/* Row 3: phone + password */}
+          {/* ردیف ۳: شماره همراه (چپ‌چین) + تکرار رمز عبور (چپ‌چین) */}
           <div className="grid grid-cols-2 gap-4">
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
@@ -177,28 +176,28 @@ const RegisterPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, phone: e.target.value })
                 }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-center"
+                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
 
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
-                رمز عبور
+                تکرار رمز عبور
               </legend>
               <input
                 type="password"
-                value={formData.password}
+                value={formData.confirmPassword}
                 onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
+                  setFormData({ ...formData, confirmPassword: e.target.value })
                 }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-center"
+                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
           </div>
 
-          {/* Row 4: national code + Jalali birth date */}
+          {/* ردیف ۴: کد ملی (چپ‌چین) + تاریخ تولد شمسی */}
           <div className="grid grid-cols-2 gap-4">
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
@@ -210,7 +209,7 @@ const RegisterPage = () => {
                 onChange={(e) =>
                   setFormData({ ...formData, nationalCode: e.target.value })
                 }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-center"
+                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
@@ -235,7 +234,7 @@ const RegisterPage = () => {
             </fieldset>
           </div>
 
-          {/* Row 5: province, city, education */}
+          {/* ردیف ۵: استان، شهر، تحصیلات */}
           <div className="grid grid-cols-3 gap-3">
             <fieldset className="border border-black rounded-[5px] px-2 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
@@ -306,7 +305,6 @@ const RegisterPage = () => {
             </fieldset>
           </div>
 
-          {/* Next step / register button */}
           <button
             type="submit"
             disabled={isSubmitting}

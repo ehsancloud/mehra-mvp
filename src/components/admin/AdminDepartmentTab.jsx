@@ -455,25 +455,35 @@ const AdminDepartmentTab = () => {
                         )}
 
                         {/* Project list */}
-                        <div className="flex flex-col gap-1 border-t border-gray-200 pt-1.5 text-[9px] text-right">
-                          <label className="font-bold text-black">
+                        <div className="flex flex-col gap-1.5 border-t border-gray-200 pt-2 text-[9px] text-right">
+                          <label className="font-bold text-black text-[10px]">
                             {selectedDeptUser.role === "nazer"
                               ? "پروژه‌هایی که زیر دستشه:"
                               : "لیست پروژه‌های فعالش:"}
                           </label>
-                          <div className="flex flex-col gap-1 max-h-[75px] overflow-y-auto scrollbar-none">
+                          <div className="flex flex-col gap-1.5 max-h-[140px] overflow-y-auto scrollbar-none pl-0.5">
                             {(
                               selectedDeptUser.projects ||
                               selectedDeptUser.activeProjects ||
                               []
-                            ).map((p, i) => (
-                              <div
-                                key={i}
-                                className="bg-gray-50 border border-gray-200 px-2 py-1 rounded text-[9px] text-right truncate"
-                              >
-                                {p}
-                              </div>
-                            ))}
+                            ).length > 0 ? (
+                              (
+                                selectedDeptUser.projects ||
+                                selectedDeptUser.activeProjects ||
+                                []
+                              ).map((p, i) => (
+                                <div
+                                  key={i}
+                                  className="bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-[4px] text-[10px] text-right text-gray-800 font-medium leading-tight shrink-0 shadow-none hover:bg-gray-100 transition-colors"
+                                >
+                                  {p}
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-gray-400 text-[9px]">
+                                پروژه‌ای ثبت نشده است
+                              </span>
+                            )}
                           </div>
                         </div>
                       </>

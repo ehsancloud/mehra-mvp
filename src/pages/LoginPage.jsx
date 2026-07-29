@@ -9,9 +9,6 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // TODO(API): POST /auth/login { identifier, password } -> { token, user }.
-  // On success, persist the returned token (e.g. httpOnly cookie set by the
-  // server, or in memory) and redirect based on user.role.
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!identifier.trim() || !password) return;
@@ -45,6 +42,7 @@ const LoginPage = () => {
             </div>
           )}
 
+          {/* اینپوت شناسه (چپ‌چین شده) */}
           <div className="relative w-full">
             <fieldset className="border border-black rounded-[5px] px-3 h-[48px] flex items-center bg-white shadow-[0_2px_0_0_#000000]">
               <legend className="pr-1 pl-1 text-[11px] text-gray-500 font-medium text-right">
@@ -54,12 +52,13 @@ const LoginPage = () => {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-[13px] text-black font-bold text-center"
+                className="w-full bg-transparent border-none outline-none text-[13px] text-black font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
           </div>
 
+          {/* اینپوت رمز عبور (چپ‌چین شده) */}
           <div className="relative w-full">
             <fieldset className="border border-black rounded-[5px] px-3 h-[48px] flex items-center bg-white shadow-[0_2px_0_0_#000000]">
               <legend className="pr-1 pl-1 text-[11px] text-gray-500 font-medium text-right">
@@ -69,7 +68,7 @@ const LoginPage = () => {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-[13px] text-black font-bold text-center"
+                className="w-full bg-transparent border-none outline-none text-[13px] text-black font-bold text-left dir-ltr"
                 required
               />
             </fieldset>

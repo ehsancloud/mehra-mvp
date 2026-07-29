@@ -22,7 +22,12 @@ const getReadinessButtonState = (applicationStatus) => {
   return { label: "اعلام آمادگی", disabled: false };
 };
 
-const ProjectDetailsModal = ({ isOpen, onClose, project, onDeclareReadiness }) => {
+const ProjectDetailsModal = ({
+  isOpen,
+  onClose,
+  project,
+  onDeclareReadiness,
+}) => {
   const { openChat } = useTicket();
 
   if (!isOpen || !project) return null;
@@ -174,7 +179,9 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onDeclareReadiness }) =
 
             {stage === "open" && (
               <button
-                onClick={() => onDeclareReadiness && onDeclareReadiness(project)}
+                onClick={() =>
+                  onDeclareReadiness && onDeclareReadiness(project)
+                }
                 disabled={readinessButton.disabled}
                 className={`w-full h-[38px] border border-black bg-white text-black text-[13px] font-bold rounded-[5px] transition-all ${readinessButton.disabled ? "opacity-50 cursor-not-allowed" : "shadow-[0_3px_0_0_#000000] active:translate-y-[2px] active:shadow-none cursor-pointer"}`}
               >
@@ -241,7 +248,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project, onDeclareReadiness }) =
                       {stage === "active" ? (
                         <button
                           onClick={() => handleViewPayment(payment)}
-                          className="h-[28px] px-3 bg-white border border-black rounded-[4px] shadow-[0_2px_0_0_#000000] text-[11px] font-bold text-black active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
+                          className="h-[30px] px-3 bg-white border border-black rounded-[4px] shadow-[0_2px_0_0_#000000] text-[10px] font-bold text-black active:translate-y-[1px] active:shadow-none cursor-pointer flex items-center gap-1"
                         >
                           <BiReceipt /> مشاهده فاکتور
                         </button>

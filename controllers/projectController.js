@@ -492,6 +492,7 @@ const createProject = asyncHandler(async (req, res) => {
     editCount,
     employerId,
     supervisorId,
+    briefFileUrl,
     isSuperProject = false,
     subProjects = [],
   } = req.body;
@@ -611,7 +612,6 @@ const createProject = asyncHandler(async (req, res) => {
     budget: Number(budget),
     proposalBudget: proposalBudget,
     paidAmount: 0,
-
     deadline,
 
     // Required at creation
@@ -632,6 +632,7 @@ const createProject = asyncHandler(async (req, res) => {
 
     payments: [],
     reviews: [],
+    ...(briefFileUrl ? { briefFileUrl } : {})
   };
 
   // ==========================================
@@ -773,7 +774,7 @@ const createProject = asyncHandler(async (req, res) => {
     ...baseProject,
 
     isSuperProject: false,
-
+    
     subProjectsIds: [],
   });
   await Task.create({

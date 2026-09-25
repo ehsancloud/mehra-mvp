@@ -39,7 +39,7 @@ const projectSchema = new mongoose.Schema(
     proposalBudget : { type : Number , default : 0 },
     paidAmount: { type: Number, default: 0 },
     deadline: { type: Date, required: true },
-
+    briefFileUrl : { type:String },
     employerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

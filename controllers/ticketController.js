@@ -46,6 +46,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
     supervisorId,
     isSuperProject,
     subProjects,
+    briefFileUrl
   } = req.body;
 
   // ------------------------------------------
@@ -110,6 +111,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
       payments: [],
 
       reviews: [],
+      ...(briefFileUrl ? { briefFileUrl } : {})
     });
     await Task.create({
       projectId : project._id,
@@ -186,7 +188,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
   for (const subProject of subProjects) {
     const newSubProject = await Project.create({
       title: subProject.title,
-
+      
       description: subProject.description || description || ticket.description,
 
       departmentId:
@@ -224,6 +226,12 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
       payments: [],
 
       reviews: [],
+      ...(subProject.briefFileUrl
+      ? { briefFileUrl: subProject.briefFileUrl }
+      : briefFileUrl
+        ? { briefFileUrl }
+        : {})
+   
     });
     await FinanceProject.create({
         projectId : newSubProject._id,
@@ -255,7 +263,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
     paidAmount: 0,
 
     deadline,
-
+    
     employerId: ticket.employer,
 
     supervisorId: supervisorId || ticket.supervisor,
@@ -282,6 +290,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
     payments: [],
 
     reviews: [],
+     ...(briefFileUrl ? { briefFileUrl } : {})
   });
   await Task.create({
     projectId : superProject._id,

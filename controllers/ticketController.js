@@ -10,6 +10,7 @@ const Freelancer = require("../models/Freelancer");
 const Employer = require("../models/Employer");
 const FinanceProject = require("../models/FinanceProject");
 const Task = require("../models/Task");
+const mongoose = require("mongoose");
 const { resolveDepartmentName } = require("../utils/resolvers");
 //convert ticket to project TODO api
 // TODO(API): POST /tickets/{id}/convert - turns a ticket into a fully
@@ -53,6 +54,11 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
   // 3. Validate required data
   // ------------------------------------------
 
+  const resolvedDeptId =
+    departmentId && mongoose.isValidObjectId(departmentId)
+      ? departmentId
+      : ticket.department;
+
   if (
     isSuperProject &&
     (!Array.isArray(subProjects) || subProjects.length === 0)
@@ -73,7 +79,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
 
       description: description || ticket.description,
 
-      departmentId: departmentId || ticket.department,
+      departmentId: resolvedDeptId,
 
       priority,
 
@@ -192,14 +198,20 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
       description: subProject.description || description || ticket.description,
 
       departmentId:
-        subProject.departmentId || departmentId || ticket.department,
+        (subProject.departmentId && mongoose.isValidObjectId(subProject.departmentId))
+          ? subProject.departmentId
+          : resolvedDeptId,
 
       priority: subProject.priority || priority,
 
       level: subProject.level || level || "c",
 
-      budget: Number(subProject.budget),
-      proposalBudget: Number(subProject.budget),
+      budget: Number(subProject.budget) || 0,
+      proposalBudget:
+        Number(subProject.proposalBudget) ||
+        Number(subProject.budget) ||
+        Number(proposalBudget) ||
+        0,
 
       paidAmount: 0,
 
@@ -252,7 +264,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
 
     description: description || ticket.description,
 
-    departmentId: departmentId || ticket.department,
+    departmentId: resolvedDeptId,
 
     priority,
 

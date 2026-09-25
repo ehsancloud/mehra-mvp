@@ -1,31 +1,31 @@
 import React, { useEffect, useState } from "react";
 import { BiChevronDown, BiCloudUpload, BiX, BiPlus, BiTrash } from "react-icons/bi";
-import { getDepartments, getPriorities, getTickets, createProject, uploadFile } from "../data/api";
+import { getDepartments, getPriorities, convertTicketToProject, uploadFile } from "../data/api";
 
 const emptySubProject = () => ({
   key: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   title: "",
   cost: "",
+  proposalBudget: "",
   deadline: "",
 });
 
-const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
+const ConvertToProjectModal = ({ isOpen, onClose, ticketId, ticketTitle, onCreated }) => {
   const [departments, setDepartments] = useState([]);
   const [priorities, setPriorities] = useState([]);
-  const [tickets, setTickets] = useState([]);
 
   const [title, setTitle] = useState("");
   const [cost, setCost] = useState("");
+  const [proposalBudget, setProposalBudget] = useState("");
   const [deadline, setDeadline] = useState("");
   const [description, setDescription] = useState("");
 
   const [priority, setPriority] = useState("تعیین نشده");
   const [department, setDepartment] = useState("تعیین نشده");
-  const [ticket, setTicket] = useState("بدون تیکت مرتبط");
+  const [departmentId, setDepartmentId] = useState(null);
 
   const [showPriorityDrop, setShowPriorityDrop] = useState(false);
   const [showDeptDrop, setShowDeptDrop] = useState(false);
-  const [showTicketDrop, setShowTicketDrop] = useState(false);
 
   const [briefFile, setBriefFile] = useState(null);
   const [isSuperProject, setIsSuperProject] = useState(false);
@@ -34,23 +34,28 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
 
   useEffect(() => {
     if (!isOpen) return;
-    getDepartments().then((list) => setDepartments(list.map((d) => d.name)));
-    getPriorities().then(setPriorities);
-    getTickets({ stage: "current" }).then((list) =>
-      setTickets(list.filter((t) => !t.relatedProjectId))
-    );
-  }, [isOpen]);
+    if (ticketTitle) {
+      setTitle(ticketTitle);
+    }
+    getDepartments().then((list) => {
+      if (Array.isArray(list)) setDepartments(list);
+    });
+    getPriorities().then((list) => {
+      if (Array.isArray(list)) setPriorities(list);
+    });
+  }, [isOpen, ticketTitle]);
 
   if (!isOpen) return null;
 
   const resetForm = () => {
     setTitle("");
     setCost("");
+    setProposalBudget("");
     setDeadline("");
     setDescription("");
     setPriority("تعیین نشده");
     setDepartment("تعیین نشده");
-    setTicket("بدون تیکت مرتبط");
+    setDepartmentId(null);
     setBriefFile(null);
     setIsSuperProject(false);
     setSubProjects([emptySubProject()]);
@@ -74,6 +79,11 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!ticketId) {
+      alert("شناسه تیکت یافت نشد.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     let briefFileUrl = null;
@@ -87,28 +97,30 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
       briefFileUrl = uploadRes.url;
     }
 
-    //const employerRecord = employers.find((emp) => emp.name === employer);
-          // employerId: employerRecord?.id, this is for payload
-    // ساختار دقیق منطبق بر بک‌اند
     const payload = {
-      title,
-      description,
-      priority,
-      departmentId: department, // بک‌اند در این روت departmentId می‌خواهد
-      budget: Number(agreeCost) || 0, // تبدیل cost به budget
-      proposalBudget: Number(defaultFreelancerCost) || 0, 
-
-      deadline,
-      sendToFreelancers,
       ticketId,
+      title: title.trim(),
+      description: description.trim(),
+      priority: priority !== "تعیین نشده" ? priority : undefined,
+      departmentId: departmentId || undefined,
+      budget: Number(cost) || 0,
+      proposalBudget: Number(proposalBudget) || Number(cost) || 0,
+      deadline: deadline.trim() || undefined,
       briefFileUrl,
       isSuperProject,
       subProjects: isSuperProject
-        ? subProjects.filter((sp) => sp.title.trim()).map(sp => ({
-            title: sp.title,
-            deadline: sp.deadline,
-            budget: Number(sp.cost) || 0 // در زیرپروژه‌ها هم باید budget باشد
-          }))
+        ? subProjects
+            .filter((sp) => sp.title.trim())
+            .map((sp) => ({
+              title: sp.title.trim(),
+              deadline: sp.deadline.trim() || undefined,
+              budget: Number(sp.cost) || 0,
+              proposalBudget:
+                Number(sp.proposalBudget) ||
+                Number(sp.cost) ||
+                Number(proposalBudget) ||
+                0,
+            }))
         : undefined,
     };
 
@@ -121,7 +133,9 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
       return;
     }
 
-    alert(`پروژه با عنوان "${title}" با موفقیت ثبت شد.`);
+    alert(`پروژه با عنوان "${title || ticketTitle}" با موفقیت ثبت شد.`);
+    if (onCreated) onCreated(result.project);
+    resetForm();
     onClose();
   };
 
@@ -137,8 +151,9 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
         style={{ fontFamily: "Pinar-FD" }}
       >
         <div className="flex justify-between items-center">
-          <h3 className="text-[20px] font-bold text-black">ثبت پروژه جدید</h3>
+          <h3 className="text-[20px] font-bold text-black">ثبت پروژه جدید از تیکت</h3>
           <button
+            type="button"
             onClick={onClose}
             className="text-gray-400 hover:text-black text-2xl cursor-pointer"
           >
@@ -241,21 +256,32 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
                     className="w-full h-[40px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-white cursor-pointer"
                   >
                     <BiChevronDown className="text-xl" />
-                    <span className="font-bold text-black">{department}</span>
+                    <span className="font-bold text-black truncate">{department}</span>
                   </div>
 
                   {showDeptDrop && (
                     <div className="absolute top-[44px] right-0 left-0 bg-white border border-black rounded-[5px] shadow-[0_3px_0_0_#000000] flex flex-col p-1 z-30 max-h-[140px] overflow-y-auto">
+                      <div
+                        onClick={() => {
+                          setDepartment("تعیین نشده");
+                          setDepartmentId(null);
+                          setShowDeptDrop(false);
+                        }}
+                        className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
+                      >
+                        تعیین نشده (دپارتمان تیکت)
+                      </div>
                       {departments.map((d) => (
                         <div
-                          key={d}
+                          key={d._id || d.id || d.name}
                           onClick={() => {
-                            setDepartment(d);
+                            setDepartment(d.name);
+                            setDepartmentId(d._id || d.id);
                             setShowDeptDrop(false);
                           }}
                           className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
                         >
-                          {d}
+                          {d.name}
                         </div>
                       ))}
                     </div>
@@ -265,38 +291,13 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
 
               <div className="relative w-full">
                 <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
-                  انتخاب تیکت مرتبط
+                  تیکت مرتبط
                 </label>
-                <div
-                  onClick={() => {
-                    setShowTicketDrop(!showTicketDrop);
-                    setShowPriorityDrop(false);
-                    setShowDeptDrop(false);
-                  }}
-                  className="w-full h-[40px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-white cursor-pointer"
-                >
-                  <BiChevronDown className="text-xl" />
-                  <span className="font-bold text-black">{ticket}</span>
+                <div className="w-full h-[40px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-gray-50">
+                  <span className="font-bold text-black truncate">
+                    {ticketTitle || (ticketId ? `تیکت ${ticketId}` : "بدون تیکت")}
+                  </span>
                 </div>
-
-                {showTicketDrop && (
-                  <div className="absolute top-[44px] right-0 left-0 bg-white border border-black rounded-[5px] shadow-[0_3px_0_0_#000000] flex flex-col p-1 z-30 max-h-[140px] overflow-y-auto">
-                    {["بدون تیکت مرتبط", ...tickets.map((t) => `تیکت ${t.id}`)].map(
-                      (t) => (
-                        <div
-                          key={t}
-                          onClick={() => {
-                            setTicket(t);
-                            setShowTicketDrop(false);
-                          }}
-                          className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
-                        >
-                          {t}
-                        </div>
-                      )
-                    )}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -305,12 +306,26 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
                 <>
                   <div className="relative w-full">
                     <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
-                      هزینه توافق شده
+                      هزینه توافق شده (تومان)
                     </label>
                     <input
                       type="text"
+                      placeholder="مثلاً 5000000"
                       value={cost}
                       onChange={(e) => setCost(e.target.value)}
+                      className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
+                    />
+                  </div>
+
+                  <div className="relative w-full">
+                    <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                      بودجه پیشنهادی کارفرما (تومان)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="مثلاً 5000000"
+                      value={proposalBudget}
+                      onChange={(e) => setProposalBudget(e.target.value)}
                       className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
                     />
                   </div>
@@ -332,12 +347,12 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
 
               <label className="w-full h-[180px] border-2 border-dashed border-black rounded-[8px] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 transition-all p-4">
                 <BiCloudUpload className="text-6xl text-black" />
-                <span className="text-[13px] font-bold text-black">
-                  {briefFile ? briefFile.name : "آپلود فایل بریف (.zip)"}
+                <span className="text-[13px] font-bold text-black text-center px-4 truncate max-w-full">
+                  {briefFile ? briefFile.name : "آپلود فایل بریف (ZIP, PDF, تصویر)"}
                 </span>
                 <input
                   type="file"
-                  accept=".zip"
+                  accept=".zip,.pdf,image/*"
                   onChange={(e) => setBriefFile(e.target.files[0])}
                   className="hidden"
                 />
@@ -363,7 +378,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
               {subProjects.map((sp, index) => (
                 <div
                   key={sp.key}
-                  className="w-full grid grid-cols-[1fr_140px_140px_36px] gap-2 items-center"
+                  className="w-full grid grid-cols-[1fr_120px_120px_120px_36px] gap-2 items-center"
                 >
                   <input
                     type="text"
@@ -380,6 +395,15 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
                     value={sp.cost}
                     onChange={(e) =>
                       handleSubProjectChange(sp.key, "cost", e.target.value)
+                    }
+                    className="h-[38px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
+                  />
+                  <input
+                    type="text"
+                    placeholder="بودجه پیشنهادی"
+                    value={sp.proposalBudget || ""}
+                    onChange={(e) =>
+                      handleSubProjectChange(sp.key, "proposalBudget", e.target.value)
                     }
                     className="h-[38px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
                   />
@@ -426,4 +450,4 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
   );
 };
 
-export default CreateProjectModal;
+export default ConvertToProjectModal;

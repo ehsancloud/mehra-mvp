@@ -99,7 +99,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
       department, // اگر بک‌اند نام دپارتمان را هندل می‌کند همین کافیست، وگرنه باید ID آن باشد
       deadline,
       budget: Number(cost), // تغییر cost به budget و تبدیل به عدد
-      proposalBudget: Number(defaultFreelancerCost || 0), // برای فرم تبدیل تیکت
+      proposalBudget: Number(cost) || 0, // برای فرم تبدیل تیکت
       ticketId: tickets.find((t) => `تیکت ${t.id}` === ticket)?.id || null,
       briefFileUrl,
       isSuperProject,

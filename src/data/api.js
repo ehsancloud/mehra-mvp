@@ -100,8 +100,8 @@ function mapProject(p) {
       lastName: f.lastName,
       username: f.username,
       initial: f.username ? f.username.charAt(0).toUpperCase() : "?",
-      level: "سطح ۱", 
-      score: "5/5"
+      level: f.level, 
+      rateScore: f.rateScore
     })),
     freelancersText: freelancers.length > 0 ? freelancers.map((f) => `${f.firstName} ${f.lastName}`).join(" ، ") : null,
     proposalStatus: p.stage === "open" ? "مشاهده درخواست‌ها" : undefined,
@@ -195,6 +195,7 @@ export async function register(formData) {
       method: "POST",
       body: JSON.stringify({ ...formData, username: formData.email.split('@')[0] })
     });
+
     if (res.user) {
       localStorage.setItem("accessToken", res.accessToken);
       localStorage.setItem("refreshToken", res.refreshToken);
@@ -340,12 +341,12 @@ export async function getProposalsForProject(projectId) {
       note: p.note,
       submittedAt: p.submittedAt ? new Date(p.submittedAt).toLocaleDateString('fa-IR') : "",
       // Mapped fallbacks for UI
-      firstName: "فریلنسر",
-      lastName: "پلتفرم",
-      username: "freelancer",
+      firstName: p.firstName,
+      lastName: p.lastName,
+      username: p.username,
       initial: "F",
-      level: "سطح ۱",
-      score: "5/5"
+      level: p.level,
+      rateScore: p.rateScore
     }));
   } catch (err) {
     return [];

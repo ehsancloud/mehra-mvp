@@ -45,7 +45,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
 
   useEffect(() => {
     if (!isOpen || !user) return;
-    getUserProfile(user.id).then((fullProfile) => {
+    getUserProfile(user._id).then((fullProfile) => {
       const p = fullProfile || user;
       setProfile(p);
       setFirstName(p.firstName || "");
@@ -92,8 +92,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
 
   const handleSaveChanges = async () => {
     setIsSaving(true);
-
-    const result = await updateUser(user.id, {
+    const result = await updateUser(user._id, {
       firstName,
       lastName,
       username,

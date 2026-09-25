@@ -165,7 +165,7 @@ const ActiveProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                       </div>
                       <div className="flex flex-col text-center">
                         <span className="text-[9px] text-gray-400">امتیاز</span>
-                        <span className="font-bold text-black">{f.score}</span>
+                        <span className="font-bold text-black">{f.rateScore}</span>
                       </div>
                     </div>
 

@@ -188,7 +188,7 @@ const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                             امتیاز
                           </span>
                           <span className="font-bold text-black">
-                            {f.score}
+                            {f.rateScore}
                           </span>
                         </div>
                         <div className="flex flex-col text-center">

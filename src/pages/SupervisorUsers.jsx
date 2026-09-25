@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import UserHeader from "../components/UserHeader";
 import UserProfileModal from "../components/UserProfileModal";
 import { getUsers } from "../data/api";
+import { useAuthStore } from "../store/authStore";
 
 const TAB_TO_ROLE = { freelancers: "freelancer", employers: "employer" };
 
@@ -94,7 +95,7 @@ const SupervisorUsers = () => {
           {users.length > 0 ? (
             users.map((user) => (
               <div
-                key={user.id}
+                key={user._id}
                 className="w-[657px] h-[72px] bg-white border border-black rounded-[5px] shadow-[0_4px_0_0_#000000] px-5 flex justify-between items-center select-none shrink-0 transition-all hover:translate-y-[1px]"
                 style={{ fontFamily: "Pinar-FD" }}
               >

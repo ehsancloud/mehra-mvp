@@ -88,7 +88,7 @@ router.get(
 router.put(
   "/users/:id",
   protect,
-  authorize("admin"),
+  authorize("supervisor","admin"),
   updateUser
 );
 

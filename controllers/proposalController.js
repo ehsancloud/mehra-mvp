@@ -180,14 +180,19 @@ const getProposalsForProject = asyncHandler(async (req, res) => {
 
     const proposals = await Proposal.find({
         projectId: req.params.id
-    }).populate({
-        path: "projectId",
-        select: "departmentId",
-        populate: {
-            path: "departmentId",
-            select: "name"
-        }
-    });
+    })
+        .populate({
+            path: "projectId",
+            select: "departmentId",
+            populate: {
+                path: "departmentId",
+                select: "name"
+            }
+        })
+        .populate({
+            path: "freelancerId",
+            select: "firstName lastName username"
+        });
 
     // Employer cannot see proposals
     if (req.user.role === "employer") {
@@ -197,12 +202,56 @@ const getProposalsForProject = asyncHandler(async (req, res) => {
         );
     }
 
+    // Get Freelancer profiles
+    const freelancerIds = proposals
+        .map(proposal => proposal.freelancerId?._id)
+        .filter(Boolean);
+
+    const freelancers = await Freelancer.find({
+        userId: { $in: freelancerIds }
+    }).select("userId level rateScore");
+
+    // Create a quick lookup map:
+    // User ID -> Freelancer profile
+    const freelancerMap = new Map();
+
+    for (const freelancer of freelancers) {
+        freelancerMap.set(
+            freelancer.userId.toString(),
+            freelancer
+        );
+    }
+
+    // Add freelancer profile information to each proposal
+    const formattedProposals = proposals.map(proposal => {
+
+        const freelancer = freelancerMap.get(
+            proposal.freelancerId?._id?.toString()
+        );
+
+        return {
+            ...proposal.toObject(),
+
+            freelancer: proposal.freelancerId
+                ? {
+                    firstName: proposal.freelancerId.firstName,
+                    lastName: proposal.freelancerId.lastName,
+                    username: proposal.freelancerId.username,
+
+                    level: freelancer?.level ?? null,
+                    rateScore: freelancer?.rateScore ?? null
+                }
+                : null
+        };
+    });
+
     // Freelancer can only see their own proposal
     if (req.user.role === "freelancer") {
 
-        const myProposals = proposals.filter(
+        const myProposals = formattedProposals.filter(
             proposal =>
-                proposal.freelancerId.equals(req.user._id)
+                proposal.freelancerId?._id?.toString() ===
+                req.user._id.toString()
         );
 
         return res.status(200).json(myProposals);
@@ -224,9 +273,9 @@ const getProposalsForProject = asyncHandler(async (req, res) => {
         }
 
         if (
-            !proposals[0]?.projectId?.departmentId ||
+            !formattedProposals[0]?.projectId?.departmentId ||
             !supervisor.departments.includes(
-                proposals[0].projectId.departmentId.name
+                formattedProposals[0].projectId.departmentId.name
             )
         ) {
             throw new ApiError(
@@ -237,7 +286,7 @@ const getProposalsForProject = asyncHandler(async (req, res) => {
     }
 
     // Admin and authorized supervisor
-    res.status(200).json(proposals);
+    res.status(200).json(formattedProposals);
 });
 // id2 = proposal ID
 const readProposalById = asyncHandler(async (req, res) => {

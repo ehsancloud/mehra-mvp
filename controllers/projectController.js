@@ -14,6 +14,71 @@ const User = require("../models/User");
 const FinanceProject = require("../models/FinanceProject");
 const Task = require("../models/Task");
 
+const enrichProjectFreelancers = async (projects) => {
+  const projectList = Array.isArray(projects) ? projects : [projects];
+
+  // Convert Mongoose documents to plain objects
+  const projectObjects = projectList.map((project) =>
+    project.toObject ? project.toObject() : project
+  );
+
+  // Get all freelancer User IDs from all projects
+  const freelancerUserIds = [
+    ...new Set(
+      projectObjects
+        .flatMap((project) => project.freelancersId || [])
+        .map((user) => user?._id?.toString() || user?.toString())
+        .filter(Boolean)
+    ),
+  ];
+
+  if (freelancerUserIds.length === 0) {
+    return projectObjects;
+  }
+
+  // Get Freelancer profiles in ONE query
+  const freelancerProfiles = await Freelancer.find({
+    userId: { $in: freelancerUserIds },
+  })
+    .select("userId level rateScore")
+    .lean();
+
+  // Create a map:
+  // User ID -> Freelancer profile
+  const freelancerMap = new Map(
+    freelancerProfiles.map((freelancer) => [
+      freelancer.userId.toString(),
+      freelancer,
+    ])
+  );
+
+  // Add Freelancer information to each User
+  for (const project of projectObjects) {
+    project.freelancersId = (project.freelancersId || []).map((user) => {
+      const userId = user?._id?.toString() || user?.toString();
+
+      const freelancer = freelancerMap.get(userId);
+
+      // If User was populated
+      if (user && typeof user === "object" && user._id) {
+        return {
+          ...user,
+          level: freelancer?.level ?? null,
+          rateScore: freelancer?.rateScore ?? null,
+        };
+      }
+
+      // If User wasn't populated
+      return {
+        _id: user,
+        level: freelancer?.level ?? null,
+        rateScore: freelancer?.rateScore ?? null,
+      };
+    });
+  }
+
+  return projectObjects;
+};
 // only supervisor and admin role can do this
 const assignFreelancer = asyncHandler(async (req, res) => {
   const { freelancerId } = req.body;
@@ -987,7 +1052,7 @@ const getProjects = asyncHandler(async (req, res) => {
     .populate("ticketIds.ticketId")
     .populate("ticketIds.userId", "firstName lastName username")
     .populate("subProjectsIds");
-  let result = projects;
+  let result = await enrichProjectFreelancers(projects);
 
   if (req.user.role === "freelancer") {
     // check out this line i have added this
@@ -996,7 +1061,7 @@ const getProjects = asyncHandler(async (req, res) => {
       throw new ApiError(404, "User not found! for cheching its skils");
     }
 
-    result = projects.filter(
+    result = result.filter(
       (project) =>
         project.departmentId &&
         user.skills?.includes(project.departmentId.name),
@@ -1054,81 +1119,137 @@ const getProjects = asyncHandler(async (req, res) => {
 const getProjectById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const project = await Project.findById(id).populate("departmentId", "name");
+  const project = await Project.findById(id)
+    .populate("departmentId", "name")
+    .populate("employerId", "firstName lastName username")
+    .populate("supervisorId", "firstName lastName username")
+    .populate(
+      "freelancersId",
+      "firstName lastName username"
+    )
+    .populate("ticketIds.ticketId")
+    .populate(
+      "ticketIds.userId",
+      "firstName lastName username"
+    )
+    .populate("subProjectsIds");
 
   if (!project) {
     throw new ApiError(404, "Project not found");
   }
 
-  let result = project;
+  // Enrich freelancers with level + rateScore
+  const enrichedProjects = await enrichProjectFreelancers(project);
+  let result = enrichedProjects[0];
+
+  // ==================================================
+  // EMPLOYER
+  // ==================================================
 
   if (req.user.role === "employer") {
-    if (!project.employerId.equals(req.user._id)) {
-      throw new ApiError(403, "You can't access here dude!");
+    if (
+      !project.employerId?._id?.equals(req.user._id)
+    ) {
+      throw new ApiError(
+        403,
+        "You can't access here dude!"
+      );
     }
 
-    const { freelancersId, supervisorId, ...others } = project.toObject();
+    const {
+      freelancersId,
+      supervisorId,
+      ...others
+    } = result;
 
     result = others;
-  } else if (req.user.role === "freelancer") {
-    const projectData = project.toObject();
+  }
 
+  // ==================================================
+  // FREELANCER
+  // ==================================================
+
+  else if (req.user.role === "freelancer") {
     // ------------------------------------------
     // OPEN PROJECT
-    // Freelancer can see open projects
     // ------------------------------------------
 
-    if (project.stage === "open") {
-      delete projectData.budget;
+    if (result.stage === "open") {
+      delete result.budget;
 
       result = {
-        ...projectData,
-        proposalBudget: project.proposalBudget,
+        ...result,
+        proposalBudget: result.proposalBudget,
       };
     }
 
     // ------------------------------------------
     // ACTIVE / COMPLETED
-    // Freelancer must be assigned
     // ------------------------------------------
-    else if (project.stage === "active" || project.stage === "completed") {
-      const isAssigned = project.freelancersId.some((freelancerId) =>
-        freelancerId.equals(req.user._id),
+
+    else if (
+      result.stage === "active" ||
+      result.stage === "completed"
+    ) {
+      const isAssigned = result.freelancersId?.some(
+        (freelancer) =>
+          freelancer._id?.toString() ===
+          req.user._id.toString()
       );
 
       if (!isAssigned) {
-        throw new ApiError(403, "You can't access this project dude!");
+        throw new ApiError(
+          403,
+          "You can't access this project dude!"
+        );
       }
 
-      // Find this freelancer's accepted proposal
       const proposal = await Proposal.findOne({
-        projectId: project._id,
+        projectId: result._id,
         freelancerId: req.user._id,
         status: "accepted",
       }).select("proposedCost");
 
-      delete projectData.budget;
+      delete result.budget;
 
       result = {
-        ...projectData,
+        ...result,
         proposedCost: proposal?.proposedCost ?? null,
       };
     }
-  } else if (req.user.role === "supervisor") {
+  }
+
+  // ==================================================
+  // SUPERVISOR
+  // ==================================================
+
+  else if (req.user.role === "supervisor") {
     const supervisor = await Supervisor.findOne({
       userId: req.user._id,
     });
 
     if (!supervisor) {
-      throw new ApiError(403, "Supervisor profile not found");
+      throw new ApiError(
+        403,
+        "Supervisor profile not found"
+      );
     }
-    if (project.stage !== "open") {
-      // Supervisor is not assigned to this project
-      if (!project.supervisorId.equals(req.user._id)) {
-        throw new ApiError(403, "You can't access to this project bro!");
+
+    if (result.stage !== "open") {
+      if (
+        !result.supervisorId?._id?.equals(req.user._id)
+      ) {
+        throw new ApiError(
+          403,
+          "You can't access to this project bro!"
+        );
       }
     }
   }
+
+  // ==================================================
+  // RESPONSE
+  // ==================================================
 
   res.status(200).json({
     result,

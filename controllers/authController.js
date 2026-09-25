@@ -271,31 +271,67 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // walletBalance, income, status etc. are deliberately excluded - they need
 // their own dedicated flows (registerRole, a password-reset endpoint,
 // wallet charge/release), not a generic PATCH.
-const UPDATABLE_USER_FIELDS = [
-  "firstName", "lastName", "avatarColor", "initial",
-  "birthDate", "province", "city", "education",
+const USER_UPDATABLE_FIELDS = [
+  "firstName",
+  "lastName",
+  "avatarColor",
+  "initial",
+  "birthDate",
+  "province",
+  "city",
+  "education",
+  "skills",
+];
+
+const FREELANCER_UPDATABLE_FIELDS = [
+  "level",
+  "availableForProposals",
 ];
 
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const patch = {};
-  for (const field of UPDATABLE_USER_FIELDS) {
-    if (req.body[field] !== undefined) patch[field] = req.body[field];
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found!");
+  }
+
+  if (user.role === "freelancer") {
+    const freelancerPatch = {};
+
+    for (const field of FREELANCER_UPDATABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        freelancerPatch[field] = req.body[field];
+      }
+    }
+
+    await Freelancer.findOneAndUpdate(
+      { userId: id },
+      { $set: freelancerPatch },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  }
+
+  const userPatch = {};
+
+  for (const field of USER_UPDATABLE_FIELDS) {
+    if (req.body[field] !== undefined) {
+      userPatch[field] = req.body[field];
+    }
   }
 
   const updatedUser = await User.findByIdAndUpdate(
     id,
-    { $set: patch },
+    { $set: userPatch },
     {
       new: true,
       runValidators: true,
     }
   ).lean();
-
-  if (!updatedUser) {
-    throw new ApiError(404, "User not found!");
-  }
 
   res.status(200).json({
     success: true,

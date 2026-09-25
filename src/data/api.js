@@ -105,7 +105,7 @@ function mapProject(p) {
     })),
     freelancersText: freelancers.length > 0 ? freelancers.map((f) => `${f.firstName} ${f.lastName}`).join(" ، ") : null,
     proposalStatus: p.stage === "open" ? "مشاهده درخواست‌ها" : undefined,
-    applicationStatus: p.proposedCost ? "applied" : "not_applied", 
+    applicationStatus: p.applicationStatus || (p.proposedCost ? "applied" : "not_applied"), 
     proposedCost: p.proposedCost
   };
 }
@@ -443,11 +443,13 @@ export async function deleteProject(id) {
   }
 }
 
-export async function assignFreelancer({ projectId, freelancerId }) {
+export async function assignFreelancer({ projectId, freelancerId, proposedCost }) {
   try {
+    const body = { freelancerId };
+    if (proposedCost !== undefined) body.proposedCost = proposedCost;
     const res = await apiFetch(`/projects/${projectId}/assign`, {
       method: "POST",
-      body: JSON.stringify({ freelancerId })
+      body: JSON.stringify(body)
     });
     return { ok: true, project: mapProject(res.project) };
   } catch (err) {

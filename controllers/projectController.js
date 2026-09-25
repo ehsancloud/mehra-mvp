@@ -203,6 +203,7 @@ const assignFreelancer = asyncHandler(async (req, res) => {
   project.freelancersId.push(freelancerId);
 
   project.status = "در حال انجام";
+  project.stage = "active";
   await Department.findByIdAndUpdate(project.departmentId, {
     $addToSet: {
       freelancers: freelancerId,
@@ -1080,9 +1081,15 @@ const getProjects = asyncHandler(async (req, res) => {
 
           delete projectData.budget;
 
+          const proposal = await Proposal.findOne({
+            projectId: project._id,
+            freelancerId: req.user._id,
+          }).select("proposedCost status");
+
           return {
             ...projectData,
             proposalBudget: project.proposalBudget,
+            proposedCost: proposal?.proposedCost ?? null,
           };
         }
         // ------------------------------------------
@@ -1101,7 +1108,8 @@ const getProjects = asyncHandler(async (req, res) => {
 
         return {
           ...projectData,
-          proposedCost: proposal?.proposedCost ?? null,
+          budget: proposal?.proposedCost ?? project.proposalBudget,
+          proposedCost: proposal?.proposedCost ?? project.proposalBudget,
         };
       }),
     );
@@ -1178,9 +1186,15 @@ const getProjectById = asyncHandler(async (req, res) => {
     if (result.stage === "open") {
       delete result.budget;
 
+      const proposal = await Proposal.findOne({
+        projectId: result._id,
+        freelancerId: req.user._id,
+      }).select("proposedCost status");
+
       result = {
         ...result,
         proposalBudget: result.proposalBudget,
+        proposedCost: proposal?.proposedCost ?? null,
       };
     }
 
@@ -1215,7 +1229,8 @@ const getProjectById = asyncHandler(async (req, res) => {
 
       result = {
         ...result,
-        proposedCost: proposal?.proposedCost ?? null,
+        budget: proposal?.proposedCost ?? result.proposalBudget,
+        proposedCost: proposal?.proposedCost ?? result.proposalBudget,
       };
     }
   }

@@ -8,6 +8,7 @@ const { createTicket } = require("./ticketController");
 const Ticket = require("../models/Ticket");
 const Task = require("../models/Task");
 const { resolveDepartmentName } = require("../utils/resolvers");
+const Department = require("../models/Department");
 
 const createProposal = asyncHandler(async (req, res) => {
     const project = await Project.findById(
@@ -462,6 +463,14 @@ const reviewProposal = asyncHandler(async (req, res) => {
                 proposal.freelancerId
             );
             
+            project.status = "در حال انجام";
+            project.stage = "active";
+
+            await Department.findByIdAndUpdate(project.departmentId, {
+                $addToSet: {
+                    freelancers: proposal.freelancerId,
+                },
+            });
 
             await project.save();
         }

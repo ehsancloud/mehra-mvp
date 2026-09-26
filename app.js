@@ -28,7 +28,7 @@ app.use(cors({
     credentials: true
 }));
 
-applySecurity(app); // includes the single cors() call - see CORS_ORIGIN in .env
+//applySecurity(app); // includes the single cors() call - see CORS_ORIGIN in .env
 app.use(express.json({ limit: "1mb" })); // ASVS V13 - cap request body size 
 app.use(compression());
 app.use(morgan("dev"));

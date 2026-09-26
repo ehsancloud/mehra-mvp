@@ -91,10 +91,7 @@ const createfinanceProject = asyncHandler(async (req, res) => {
 });
 
 const getFinanceProjectById = asyncHandler(async (req, res) => {
-  const financeProject = await FinanceProject.findById(req.params.id).populate(
-    "projectId",
-    "supervisorId",
-  );
+  const financeProject = await FinanceProject.findById(req.params.id).populate("projectId", "employerId supervisorId");
   if (!financeProject) {
     throw new ApiError(404, "Finance project not found.");
   }
@@ -112,7 +109,7 @@ const getFinanceProjectById = asyncHandler(async (req, res) => {
 const getFinanceProjectByProjectId = asyncHandler(async (req, res) => {
   const financeProject = await FinanceProject.findOne({
     projectId: req.params.id,
-  }).populate("projectId", "supervisorId");
+  }).populate("projectId", "supervisorId employerId");
   if (!financeProject) {
     throw new ApiError(404, "Finance project not found for this project.");
   }
@@ -132,14 +129,14 @@ const getFinanceProjects = asyncHandler(async (req, res) => {
 
     const financeProjects = await FinanceProject.find({
       projectId: { $in: projectIds },
-    });
+    }).populate("projectId", "employerId supervisorId");
 
     return res.status(200).json({
       count: financeProjects.length,
       financeProjects,
     });
   } else if (req.user.role === "admin") {
-    const financeProjects = await FinanceProject.find({});
+    const financeProjects = await FinanceProject.find({}).populate("projectId", "employerId supervisorId");
 
     return res.status(200).json({
       count: financeProjects.length,

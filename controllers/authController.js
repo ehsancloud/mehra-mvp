@@ -1,6 +1,4 @@
-// Register / login / refresh. Passwords are hashed with bcrypt (ASVS V2.4.1)
-// and never returned or logged. Access tokens are short-lived; refresh
-// tokens are longer-lived (ASVS V3 session management).
+const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const asyncHandler = require("../utils/asyncHandler");
@@ -11,24 +9,59 @@ const { getLevelLabel, resolveDepartmentName } = require("../utils/resolvers");
 
 
 const getUsers = asyncHandler(async (req, res) => {
-  const { role, query } = req.query;
+  const { role, query, department, departmentId, projectId } = req.query;
 
-  const filter = {};
+  const andConditions = [];
 
   if (role) {
-    filter.role = role;
+    andConditions.push({ role });
+  }
+
+  // Filter by department if requested (directly, or through projectId)
+  let targetDeptId = departmentId;
+  let targetDeptName = department;
+
+  if (projectId && !targetDeptId && !targetDeptName && mongoose.Types.ObjectId.isValid(projectId)) {
+    const proj = await Project.findById(projectId);
+    if (proj?.departmentId) {
+      targetDeptId = proj.departmentId;
+    }
+  }
+
+  if (targetDeptId || targetDeptName) {
+    let dept = null;
+    if (targetDeptId && mongoose.Types.ObjectId.isValid(targetDeptId)) {
+      dept = await Department.findById(targetDeptId);
+    }
+    if (!dept && targetDeptName) {
+      dept = await Department.findOne({ name: targetDeptName });
+    }
+
+    const deptFreelancerIds = dept?.freelancers || [];
+    const deptName = dept?.name || targetDeptName;
+
+    const deptMatches = [
+      { _id: { $in: deptFreelancerIds } },
+      { skills: deptName },
+    ];
+    if (dept?._id) {
+      deptMatches.push({ skills: dept._id.toString() });
+    }
+    andConditions.push({ $or: deptMatches });
   }
 
   if (query?.trim()) {
     const q = query.trim();
-
-    filter.$or = [
-      { firstName: { $regex: q, $options: "i" } },
-      { lastName: { $regex: q, $options: "i" } },
-      { username: { $regex: q, $options: "i" } },
-    ];
+    andConditions.push({
+      $or: [
+        { firstName: { $regex: q, $options: "i" } },
+        { lastName: { $regex: q, $options: "i" } },
+        { username: { $regex: q, $options: "i" } },
+      ],
+    });
   }
 
+  const filter = andConditions.length > 0 ? { $and: andConditions } : {};
   const users = await User.find(filter);
 
   res.status(200).json({
@@ -271,67 +304,31 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // walletBalance, income, status etc. are deliberately excluded - they need
 // their own dedicated flows (registerRole, a password-reset endpoint,
 // wallet charge/release), not a generic PATCH.
-const USER_UPDATABLE_FIELDS = [
-  "firstName",
-  "lastName",
-  "avatarColor",
-  "initial",
-  "birthDate",
-  "province",
-  "city",
-  "education",
-  "skills",
-];
-
-const FREELANCER_UPDATABLE_FIELDS = [
-  "level",
-  "availableForProposals",
+const UPDATABLE_USER_FIELDS = [
+  "firstName", "lastName", "avatarColor", "initial",
+  "birthDate", "province", "city", "education",
 ];
 
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const user = await User.findById(id);
-
-  if (!user) {
-    throw new ApiError(404, "User not found!");
-  }
-
-  if (user.role === "freelancer") {
-    const freelancerPatch = {};
-
-    for (const field of FREELANCER_UPDATABLE_FIELDS) {
-      if (req.body[field] !== undefined) {
-        freelancerPatch[field] = req.body[field];
-      }
-    }
-
-    await Freelancer.findOneAndUpdate(
-      { userId: id },
-      { $set: freelancerPatch },
-      {
-        new: true,
-        runValidators: true,
-      }
-    );
-  }
-
-  const userPatch = {};
-
-  for (const field of USER_UPDATABLE_FIELDS) {
-    if (req.body[field] !== undefined) {
-      userPatch[field] = req.body[field];
-    }
+  const patch = {};
+  for (const field of UPDATABLE_USER_FIELDS) {
+    if (req.body[field] !== undefined) patch[field] = req.body[field];
   }
 
   const updatedUser = await User.findByIdAndUpdate(
     id,
-    { $set: userPatch },
+    { $set: patch },
     {
       new: true,
       runValidators: true,
     }
   ).lean();
+
+  if (!updatedUser) {
+    throw new ApiError(404, "User not found!");
+  }
 
   res.status(200).json({
     success: true,
@@ -383,10 +380,41 @@ const signTokens = (user) => {
 const register = asyncHandler(async (req, res) => {
     const { password, ...rest } = req.body;
 
+    const trimmedUsername = rest.username?.trim();
+    if (!trimmedUsername) {
+        throw new ApiError(400, "نام کاربری الزامی است");
+    }
+
+    const existingUser = await User.findOne({
+        $or: [
+            { username: trimmedUsername },
+            { email: rest.email?.toLowerCase().trim() },
+            { phone: rest.phone?.trim() },
+            { nationalCode: rest.nationalCode?.trim() }
+        ]
+    });
+
+    if (existingUser) {
+        if (existingUser.username?.toLowerCase() === trimmedUsername.toLowerCase()) {
+            throw new ApiError(400, "این نام کاربری قبلاً ثبت شده است.");
+        }
+        if (existingUser.email?.toLowerCase() === rest.email?.toLowerCase().trim()) {
+            throw new ApiError(400, "این ایمیل قبلاً ثبت شده است.");
+        }
+        if (existingUser.phone === rest.phone?.trim()) {
+            throw new ApiError(400, "این شماره همراه قبلاً ثبت شده است.");
+        }
+        if (existingUser.nationalCode === rest.nationalCode?.trim()) {
+            throw new ApiError(400, "این کد ملی قبلاً ثبت شده است.");
+        }
+        throw new ApiError(400, "کاربری با این مشخصات قبلاً ثبت شده است.");
+    }
+
     const hashed = await bcrypt.hash(password, 12);
 
     const user = await User.create({
         ...rest,
+        username: trimmedUsername,
         uniqueId: `US${Date.now()}`,
         password: hashed
     });
@@ -396,7 +424,8 @@ const register = asyncHandler(async (req, res) => {
     res.status(201).json({
         user: {
             id: user._id,
-            role: user.role
+            role: user.role,
+            username: user.username,
         },
         ...tokens
     });
@@ -538,18 +567,34 @@ const registerRole = asyncHandler(async (req, res) => {
 
 const login = asyncHandler(async (req, res) => {
   const { username, password } = req.body;
-  const user = await User.findOne({ username }).select("+password");
+  const trimmed = username?.trim();
+  const user = await User.findOne({
+    $or: [
+      { username: trimmed },
+      { email: trimmed?.toLowerCase() },
+      { phone: trimmed },
+    ],
+  }).select("+password");
 
   // ASVS V2.2.1 - one generic error for both "no such user" and "wrong password"
   if (!user || !(await bcrypt.compare(password, user.password))) {
-    throw new ApiError(401, "Invalid username or password");
+    throw new ApiError(401, "نام کاربری یا رمز عبور نامعتبر است");
   }
   if (user.status !== "active") {
-    throw new ApiError(403, "Account is inactive");
+    throw new ApiError(403, "حساب کاربری غیرفعال است");
   }
 
   const tokens = signTokens(user);
-  res.json({ user: { id: user._id, role: user.role }, ...tokens });
+  res.json({
+    user: {
+      id: user._id,
+      role: user.role,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    },
+    ...tokens,
+  });
 });
 
 const refresh = asyncHandler(async (req, res) => {

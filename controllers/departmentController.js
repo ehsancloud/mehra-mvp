@@ -12,8 +12,10 @@ const createDepartment = asyncHandler(async (req , res)=>{
     res.status(201).json(department);
 })
 const getDepartments = asyncHandler(async (req, res) => {
-
-    const departments = await Department.find();
+    const departments = await Department.find().populate(
+        "freelancers",
+        "firstName lastName username level rateScore avatarColor initial"
+    );
 
     res.status(200).json(departments);
 });

@@ -38,7 +38,7 @@ const AssignFreelancerModal = ({
 
   const handleAssignDirect = async (e, f) => {
     e.stopPropagation(); // don't also trigger the row's "open profile" click
-    const result = await assignFreelancer({ projectId, freelancerId: f.id });
+    const result = await assignFreelancer({ projectId, freelancerId: f._id });
     if (!result.ok) {
       alert("ارجاع پروژه با خطا مواجه شد.");
       return;

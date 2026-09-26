@@ -20,6 +20,7 @@ const RegisterPage = () => {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    username: "",
     email: "",
     phone: "",
     nationalCode: "",
@@ -35,8 +36,17 @@ const RegisterPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const validate = () => {
-    if (formData.password.length < 6) {
-      return "رمز عبور باید حداقل ۶ کاراکتر باشد.";
+    if (!formData.username.trim()) {
+      return "نام کاربری را وارد کنید.";
+    }
+    if (formData.username.trim().length < 3) {
+      return "نام کاربری باید حداقل ۳ کاراکتر باشد.";
+    }
+    if (!/^[a-zA-Z0-9_.-]+$/.test(formData.username.trim())) {
+      return "نام کاربری فقط می‌تواند شامل حروف و اعداد انگلیسی و کاراکترهای _ و . و - باشد.";
+    }
+    if (formData.password.length < 8) {
+      return "رمز عبور باید حداقل ۸ کاراکتر باشد.";
     }
     if (formData.password !== formData.confirmPassword) {
       return "رمز عبور و تکرار آن یکسان نیستند.";
@@ -98,7 +108,7 @@ const RegisterPage = () => {
             </div>
           )}
 
-          {/* ردیف ۱: نام (راست‌چین) + ایمیل (چپ‌چین) */}
+          {/* ردیف ۱: نام و نام خانوادگی */}
           <div className="grid grid-cols-2 gap-4">
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
@@ -111,6 +121,40 @@ const RegisterPage = () => {
                   setFormData({ ...formData, firstName: e.target.value })
                 }
                 className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-right"
+                required
+              />
+            </fieldset>
+
+            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
+              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
+                نام خانوادگی
+              </legend>
+              <input
+                type="text"
+                value={formData.lastName}
+                onChange={(e) =>
+                  setFormData({ ...formData, lastName: e.target.value })
+                }
+                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-right"
+                required
+              />
+            </fieldset>
+          </div>
+
+          {/* ردیف ۲: نام کاربری و ایمیل */}
+          <div className="grid grid-cols-2 gap-4">
+            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
+              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
+                نام کاربری (لاتین)
+              </legend>
+              <input
+                type="text"
+                placeholder="username"
+                value={formData.username}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value.toLowerCase().trim() })
+                }
+                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
@@ -131,40 +175,7 @@ const RegisterPage = () => {
             </fieldset>
           </div>
 
-          {/* ردیف ۲: نام خانوادگی (راست‌چین) + رمز عبور (چپ‌چین) */}
-          <div className="grid grid-cols-2 gap-4">
-            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
-              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
-                نام خانوادگی
-              </legend>
-              <input
-                type="text"
-                value={formData.lastName}
-                onChange={(e) =>
-                  setFormData({ ...formData, lastName: e.target.value })
-                }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-right"
-                required
-              />
-            </fieldset>
-
-            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
-              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
-                رمز عبور
-              </legend>
-              <input
-                type="password"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-left dir-ltr"
-                required
-              />
-            </fieldset>
-          </div>
-
-          {/* ردیف ۳: شماره همراه (چپ‌چین) + تکرار رمز عبور (چپ‌چین) */}
+          {/* ردیف ۳: شماره همراه و کد ملی */}
           <div className="grid grid-cols-2 gap-4">
             <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
               <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
@@ -177,6 +188,39 @@ const RegisterPage = () => {
                   setFormData({ ...formData, phone: e.target.value })
                 }
                 className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left dir-ltr"
+                required
+              />
+            </fieldset>
+
+            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
+              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
+                کد ملی
+              </legend>
+              <input
+                type="text"
+                value={formData.nationalCode}
+                onChange={(e) =>
+                  setFormData({ ...formData, nationalCode: e.target.value })
+                }
+                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left dir-ltr"
+                required
+              />
+            </fieldset>
+          </div>
+
+          {/* ردیف ۴: رمز عبور و تکرار رمز عبور */}
+          <div className="grid grid-cols-2 gap-4">
+            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
+              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
+                رمز عبور (حداقل ۸ کاراکتر)
+              </legend>
+              <input
+                type="password"
+                value={formData.password}
+                onChange={(e) =>
+                  setFormData({ ...formData, password: e.target.value })
+                }
+                className="w-full bg-transparent border-none outline-none text-[12px] font-bold text-left dir-ltr"
                 required
               />
             </fieldset>
@@ -197,42 +241,24 @@ const RegisterPage = () => {
             </fieldset>
           </div>
 
-          {/* ردیف ۴: کد ملی (چپ‌چین) + تاریخ تولد شمسی */}
-          <div className="grid grid-cols-2 gap-4">
-            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
-              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
-                کد ملی
-              </legend>
-              <input
-                type="text"
-                value={formData.nationalCode}
-                onChange={(e) =>
-                  setFormData({ ...formData, nationalCode: e.target.value })
-                }
-                className="w-full bg-transparent border-none outline-none text-[12px] font-mono font-bold text-left dir-ltr"
-                required
-              />
-            </fieldset>
-
-            <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
-              <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
-                تاریخ تولد (شمسی)
-              </legend>
-
-              <DatePicker
-                value={formData.birthDate}
-                onChange={(date) =>
-                  setFormData({
-                    ...formData,
-                    birthDate: date?.format?.("YYYY/MM/DD") || date,
-                  })
-                }
-                calendar={persian}
-                locale={persian_fa}
-                inputClass="w-full bg-transparent border-none text-[12px] font-mono text-black font-bold focus:outline-none text-center"
-              />
-            </fieldset>
-          </div>
+          {/* ردیف ۵: تاریخ تولد شمسی */}
+          <fieldset className="border border-black rounded-[5px] px-3 h-[42px] flex items-center bg-white shadow-sm">
+            <legend className="pr-1 pl-1 text-[10px] text-gray-500 font-medium text-right">
+              تاریخ تولد (شمسی)
+            </legend>
+            <DatePicker
+              value={formData.birthDate}
+              onChange={(date) =>
+                setFormData({
+                  ...formData,
+                  birthDate: date?.format?.("YYYY/MM/DD") || date,
+                })
+              }
+              calendar={persian}
+              locale={persian_fa}
+              inputClass="w-full bg-transparent border-none text-[12px] font-mono text-black font-bold focus:outline-none text-center"
+            />
+          </fieldset>
 
           {/* ردیف ۵: استان، شهر، تحصیلات */}
           <div className="grid grid-cols-3 gap-3">

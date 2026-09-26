@@ -393,6 +393,7 @@ const SupervisorProjects = () => {
           loadProjects();
         }}
         projectId={selectedProject?.id}
+        project={selectedProject}
       />
 
       <ReviewFreelancerProposalModal

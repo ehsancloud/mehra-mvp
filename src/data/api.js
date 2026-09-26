@@ -79,6 +79,7 @@ function mapProject(p) {
     supervisorId: sup._id,
     supervisorInitial: sup.username ? sup.username.charAt(0).toUpperCase() : "م",
     department: dept.name || "تعیین نشده",
+    departmentId: dept._id || p.departmentId?._id || (typeof p.departmentId === "string" ? p.departmentId : null),
     employer: emp.firstName ? `${emp.firstName} ${emp.lastName}` : "کارفرما",
     employerId: emp._id,
     employerInitial: emp.username ? emp.username.charAt(0).toUpperCase() : "ا",
@@ -204,7 +205,10 @@ export async function register(formData) {
   try {
     const res = await apiFetch("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ ...formData, username: formData.email.split('@')[0] })
+      body: JSON.stringify({
+        ...formData,
+        username: formData.username?.trim() || formData.email.split("@")[0],
+      }),
     });
 
     if (res.user) {
@@ -235,11 +239,14 @@ export async function completeRegistration({ formData, role }) {
   }
 }
 
-export async function getUsers({ role, query } = {}) {
+export async function getUsers({ role, query, department, departmentId, projectId } = {}) {
   try {
     const params = new URLSearchParams();
     if (role) params.append('role', role);
     if (query) params.append('query', query);
+    if (department) params.append('department', department);
+    if (departmentId) params.append('departmentId', departmentId);
+    if (projectId) params.append('projectId', projectId);
     const res = await apiFetch(`/auth/users?${params.toString()}`);
     return res.users || [];
   } catch (err) {

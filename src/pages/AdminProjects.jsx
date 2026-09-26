@@ -381,6 +381,7 @@ const AdminProjects = () => {
           loadProjects();
         }}
         projectId={selectedProject?.id}
+        project={selectedProject}
       />
 
       <ReviewFreelancerProposalModal

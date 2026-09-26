@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { BiX } from "react-icons/bi";
-import { getUsers, assignFreelancer } from "../data/api";
+import { getUsers, assignFreelancer, getProjectById } from "../data/api";
 import { getLevelLabel } from "../utils/projectLevels";
 
 const AssignFreelancerModal = ({
   isOpen,
   onBack,
   projectId,
+  project,
+  departmentId,
+  department,
   onSelectFreelancer,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
@@ -15,18 +18,61 @@ const AssignFreelancerModal = ({
   const [proposedCost, setProposedCost] = useState("");
   const [assignedFreelancerIds, setAssignedFreelancerIds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentProject, setCurrentProject] = useState(project || null);
+  const [showAllFreelancers, setShowAllFreelancers] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!isOpen) return;
-    getUsers({ role: "freelancer" }).then((list) =>
-      setFreelancers(
-        list.map((f) => ({
-          ...f,
-          levelLabel: getLevelLabel(f.level),
-        })),
-      ),
-    );
-  }, [isOpen]);
+    if (!isOpen) {
+      setAssigningFreelancerId(null);
+      setProposedCost("");
+      setShowAllFreelancers(false);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoading(true);
+
+    const loadData = async () => {
+      let proj = project;
+      if (!proj && projectId) {
+        proj = await getProjectById(projectId);
+      }
+      if (isMounted && proj) {
+        setCurrentProject(proj);
+      }
+
+      const targetDeptId = departmentId || proj?.departmentId;
+      const targetDeptName = department || proj?.department;
+
+      const params = {
+        role: "freelancer",
+        projectId: projectId || proj?.id,
+      };
+
+      if (!showAllFreelancers && (targetDeptId || targetDeptName)) {
+        if (targetDeptId) params.departmentId = targetDeptId;
+        if (targetDeptName && targetDeptName !== "تعیین نشده") params.department = targetDeptName;
+      }
+
+      const list = await getUsers(params);
+      if (isMounted) {
+        setFreelancers(
+          list.map((f) => ({
+            ...f,
+            levelLabel: getLevelLabel(f.level),
+          }))
+        );
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, projectId, project, departmentId, department, showAllFreelancers]);
 
   if (!isOpen) return null;
 
@@ -57,7 +103,7 @@ const AssignFreelancerModal = ({
     setIsSubmitting(true);
     const parsedCost = proposedCost ? Number(proposedCost) : undefined;
     const result = await assignFreelancer({
-      projectId,
+      projectId: projectId || currentProject?.id,
       freelancerId: f.id || f._id,
       proposedCost: parsedCost,
     });
@@ -73,6 +119,8 @@ const AssignFreelancerModal = ({
     setAssigningFreelancerId(null);
     setProposedCost("");
   };
+
+  const activeDeptName = currentProject?.department || department;
 
   return (
     <div
@@ -90,8 +138,10 @@ const AssignFreelancerModal = ({
             <h3 className="text-[18px] font-bold text-black text-right">
               ارجاء به فریلنسر
             </h3>
-            <span className="text-[11px] text-gray-400 text-right">
-              لیست فریلنسر ها
+            <span className="text-[11px] text-gray-500 text-right">
+              {activeDeptName
+                ? `لیست فریلنسرهای دپارتمان ${activeDeptName}`
+                : "لیست فریلنسرها"}
             </span>
           </div>
           <button
@@ -102,6 +152,23 @@ const AssignFreelancerModal = ({
             <BiX />
           </button>
         </div>
+
+        {activeDeptName && (
+          <div className="flex justify-between items-center px-1 text-[11px] text-gray-600">
+            <span>
+              {showAllFreelancers
+                ? "در حال نمایش تمامی فریلنسرها"
+                : `فیلتر شده بر اساس دپارتمان ${activeDeptName}`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowAllFreelancers(!showAllFreelancers)}
+              className="text-blue-600 hover:underline cursor-pointer font-bold"
+            >
+              {showAllFreelancers ? "نمایش فقط فریلنسرهای این دپارتمان" : "نمایش همه فریلنسرها"}
+            </button>
+          </div>
+        )}
 
         <div className="w-full flex gap-2">
           <button
@@ -200,9 +267,29 @@ const AssignFreelancerModal = ({
             </div>
           ))}
 
-          {filteredFreelancers.length === 0 && (
+          {filteredFreelancers.length === 0 && !isLoading && (
+            <div className="flex flex-col items-center justify-center gap-2 py-6 text-gray-400 text-[12px]">
+              <span>
+                {showAllFreelancers
+                  ? "فریلنسری با این مشخصات یافت نشد."
+                  : activeDeptName
+                  ? `فریلنسری در دپارتمان «${activeDeptName}» یافت نشد.`
+                  : "فریلنسری یافت نشد."}
+              </span>
+              {!showAllFreelancers && activeDeptName && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllFreelancers(true)}
+                  className="text-[11px] text-blue-600 hover:underline font-bold cursor-pointer"
+                >
+                  مشاهده همه فریلنسرها
+                </button>
+              )}
+            </div>
+          )}
+          {isLoading && (
             <div className="text-center text-gray-400 text-[12px] py-6">
-              فریلنسری با این مشخصات یافت نشد.
+              در حال بارگذاری لیست فریلنسرها...
             </div>
           )}
         </div>

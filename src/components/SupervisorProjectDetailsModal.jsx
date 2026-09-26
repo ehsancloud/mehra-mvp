@@ -188,7 +188,7 @@ const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                             امتیاز
                           </span>
                           <span className="font-bold text-black">
-                            {f.rateScore}
+                            {f.score}
                           </span>
                         </div>
                         <div className="flex flex-col text-center">
@@ -281,6 +281,7 @@ const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
         isOpen={activeStep === "assign"}
         onBack={() => setActiveStep(null)}
         projectId={projectData.id}
+        project={projectData}
         onSelectFreelancer={(freelancer) => {
           setSelectedFreelancer(freelancer);
           setActiveStep("review");

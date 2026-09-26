@@ -6,7 +6,8 @@ import PaymentReceiptModal from "../components/PaymentReceiptModal";
 import {
   getFinanceStats,
   getFinanceProjects,
-  addTransaction
+  addTransaction,
+  getUsers,
 } from "../data/api";
 import { useAuthStore } from "../store/authStore";
 
@@ -31,8 +32,9 @@ const SupervisorFinance = () => {
 
   // استیت‌های ساخت تراکنش جدید
   const [txAmount, setTxAmount] = useState("");
-  const [txState, setTxState] = useState("pending");
-  const [txStatus, setTxStatus] = useState("");
+  const [txStatus, setTxStatus] = useState("در انتظار پرداخت");
+  const [txTarget, setTxTarget] = useState("");
+  const [employers, setEmployers] = useState([]);
   const [isAddingTx, setIsAddingTx] = useState(false);
 
   const { user: currentSupervisor } = useAuthStore();
@@ -43,6 +45,12 @@ const SupervisorFinance = () => {
       setProjects(list);
       setSelectedProject(list[0] || null);
     });
+    getUsers({ role: "employer" }).then((list) => {
+      setEmployers(list || []);
+      if (list && list.length > 0) {
+        setTxTarget(list[0]._id || list[0].id);
+      }
+    });
   }, []);
 
   const handleAddTransaction = async (e) => {
@@ -50,11 +58,21 @@ const SupervisorFinance = () => {
     if (!selectedProject || !txAmount) return;
     
     setIsAddingTx(true);
-    // ارسال دقیق مقادیر مطابق داکیومنت
+    const selectedEmp = employers.find(
+      (emp) => (emp._id || emp.id)?.toString() === txTarget?.toString()
+    );
+    const stateMap = {
+      "در انتظار پرداخت": "pending",
+      "پرداخت شده": "paid",
+      "بلاک شده": "blocked"
+    };
+
     const payload = {
       amount: Number(txAmount),
-      state: txState,
-      status: txStatus || "تراکنش جدید"
+      status: txStatus,
+      state: stateMap[txStatus] || "pending",
+      targetId: selectedEmp ? (selectedEmp._id || selectedEmp.id) : undefined,
+      target: selectedEmp ? selectedEmp.username : undefined
     };
 
     const res = await addTransaction(selectedProject.id || selectedProject._id, payload);
@@ -63,8 +81,6 @@ const SupervisorFinance = () => {
     if (res.ok) {
       alert("تراکنش با موفقیت ثبت شد.");
       setTxAmount("");
-      setTxStatus("");
-      setTxState("pending");
       
       // اضافه کردن تراکنش جدید به لیست محلی UI
       setSelectedProject(prev => ({
@@ -187,16 +203,43 @@ const SupervisorFinance = () => {
             {selectedProject && (
               <form onSubmit={handleAddTransaction} className="flex flex-col gap-2 border-t border-gray-200 pt-3">
                 <span className="text-[11px] font-bold text-black mb-1 text-right">افزودن تراکنش دستی</span>
-                <input type="number" placeholder="مبلغ (تومان)" value={txAmount} onChange={(e)=>setTxAmount(e.target.value)} className="w-full h-8 border border-gray-300 rounded px-2 text-[11px] font-mono focus:border-black focus:outline-none bg-gray-50" required />
-                <input type="text" placeholder="عنوان/بابت" value={txStatus} onChange={(e)=>setTxStatus(e.target.value)} className="w-full h-8 border border-gray-300 rounded px-2 text-[11px] focus:border-black focus:outline-none bg-gray-50 text-right" required />
+                <input
+                  type="number"
+                  placeholder="مبلغ (تومان)"
+                  value={txAmount}
+                  onChange={(e) => setTxAmount(e.target.value)}
+                  className="w-full h-8 border border-gray-300 rounded px-2 text-[11px] font-mono focus:border-black focus:outline-none bg-gray-50 text-right"
+                  required
+                />
+                <select
+                  value={txTarget}
+                  onChange={(e) => setTxTarget(e.target.value)}
+                  className="w-full h-8 border border-gray-300 rounded px-2 text-[11px] bg-white cursor-pointer focus:outline-none text-right"
+                  required
+                >
+                  <option value="" disabled>انتخاب کارفرما</option>
+                  {employers.map((emp) => (
+                    <option key={emp._id || emp.id} value={emp._id || emp.id}>
+                      {emp.firstName ? `${emp.firstName} ${emp.lastName} (${emp.username})` : emp.username}
+                    </option>
+                  ))}
+                </select>
                 <div className="flex gap-2">
-                  <button type="submit" disabled={isAddingTx} className="flex-1 bg-[#1c1c1e] text-white h-8 rounded text-[11px] font-bold shadow-[0_2px_0_0_#000000] active:translate-y-[1px] cursor-pointer disabled:opacity-50">
+                  <button
+                    type="submit"
+                    disabled={isAddingTx}
+                    className="flex-1 bg-[#1c1c1e] text-white h-8 rounded text-[11px] font-bold shadow-[0_2px_0_0_#000000] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
+                  >
                     {isAddingTx ? "در حال ثبت..." : "ثبت تراکنش"}
                   </button>
-                  <select value={txState} onChange={(e)=>setTxState(e.target.value)} className="flex-1 h-8 border border-gray-300 rounded px-2 text-[11px] bg-white cursor-pointer focus:outline-none">
-                    <option value="pending">در انتظار (Pending)</option>
-                    <option value="paid">پرداخت شده (Paid)</option>
-                    <option value="blocked">بلاک شده (Blocked)</option>
+                  <select
+                    value={txStatus}
+                    onChange={(e) => setTxStatus(e.target.value)}
+                    className="flex-1 h-8 border border-gray-300 rounded px-2 text-[11px] bg-white cursor-pointer focus:outline-none text-right"
+                  >
+                    <option value="در انتظار پرداخت">در انتظار پرداخت</option>
+                    <option value="پرداخت شده">پرداخت شده</option>
+                    <option value="بلاک شده">بلاک شده</option>
                   </select>
                 </div>
               </form>

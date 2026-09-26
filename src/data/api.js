@@ -82,7 +82,11 @@ function mapProject(p) {
     employer: emp.firstName ? `${emp.firstName} ${emp.lastName}` : "کارفرما",
     employerId: emp._id,
     employerInitial: emp.username ? emp.username.charAt(0).toUpperCase() : "ا",
-    deadline: p.deadline ? new Date(p.deadline).toLocaleDateString('fa-IR') : "",
+    deadline: p.deadline
+      ? typeof p.deadline === "string" && (p.deadline.includes("-") || p.deadline.includes("T"))
+        ? new Date(p.deadline).toLocaleDateString("fa-IR")
+        : p.deadline
+      : "",
     isSuperProject: p.isSuperProject || false,
     progress: p.progress || 0,
     level: p.level || "c",
@@ -91,18 +95,25 @@ function mapProject(p) {
     employerStatus: p.stage === "active" ? "در حال انجام" : p.stage === "completed" ? "خاتمه یافته" : "در انتظار شروع",
     stage: p.stage || "open",
     ticketId: p.ticketIds?.[0]?.ticketId?._id || p.ticketIds?.[0]?.ticketId || null,
+    ticketIds: p.ticketIds || [],
     payments: p.payments || [],
     reviews: p.reviews || [],
     subProjects: p.subProjectsIds || [],
-    freelancersList: freelancers.map((f) => ({
-      id: f._id,
-      firstName: f.firstName,
-      lastName: f.lastName,
-      username: f.username,
-      initial: f.username ? f.username.charAt(0).toUpperCase() : "?",
-      level: f.level, 
-      rateScore: f.rateScore
-    })),
+    freelancersList: freelancers.map((f) => {
+      const fTicket = p.ticketIds?.find(
+        (t) => (t.userId?._id || t.userId)?.toString() === f._id?.toString()
+      );
+      return {
+        id: f._id,
+        firstName: f.firstName,
+        lastName: f.lastName,
+        username: f.username,
+        initial: f.username ? f.username.charAt(0).toUpperCase() : "?",
+        level: f.level,
+        rateScore: f.rateScore,
+        ticketId: fTicket ? (fTicket.ticketId?._id || fTicket.ticketId) : null,
+      };
+    }),
     freelancersText: freelancers.length > 0 ? freelancers.map((f) => `${f.firstName} ${f.lastName}`).join(" ، ") : null,
     proposalStatus: p.stage === "open" ? "مشاهده درخواست‌ها" : undefined,
     applicationStatus: p.applicationStatus || (p.proposedCost ? "applied" : "not_applied"), 

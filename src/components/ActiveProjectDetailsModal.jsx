@@ -27,7 +27,11 @@ const ActiveProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
   };
 
   const handleOpenFreelancerChat = (f) => {
-    const ticketId = f.ticketId || projectData.ticketId || projectData.id;
+    const fTicket = projectData.ticketIds?.find(
+      (t) => (t.userId?._id || t.userId)?.toString() === f.id?.toString()
+    );
+    const rawTicketId = f.ticketId || fTicket?.ticketId?._id || fTicket?.ticketId || projectData.ticketId || projectData.id;
+    const ticketId = rawTicketId?._id || rawTicketId;
     openChat(ticketId, `${projectData.title} | ${f.firstName} ${f.lastName}`);
   };
 
@@ -165,7 +169,7 @@ const ActiveProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                       </div>
                       <div className="flex flex-col text-center">
                         <span className="text-[9px] text-gray-400">امتیاز</span>
-                        <span className="font-bold text-black">{f.rateScore}</span>
+                        <span className="font-bold text-black">{f.rateScore ?? f.score ?? 0}</span>
                       </div>
                     </div>
 

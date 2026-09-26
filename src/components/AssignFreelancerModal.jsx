@@ -11,6 +11,10 @@ const AssignFreelancerModal = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [freelancers, setFreelancers] = useState([]);
+  const [assigningFreelancerId, setAssigningFreelancerId] = useState(null);
+  const [proposedCost, setProposedCost] = useState("");
+  const [assignedFreelancerIds, setAssignedFreelancerIds] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -36,15 +40,38 @@ const AssignFreelancerModal = ({
     );
   });
 
-  const handleAssignDirect = async (e, f) => {
-    e.stopPropagation(); // don't also trigger the row's "open profile" click
-    const result = await assignFreelancer({ projectId, freelancerId: f._id });
+  const handleStartAssign = (e, f) => {
+    e.stopPropagation();
+    setAssigningFreelancerId(f.id || f._id);
+    setProposedCost("");
+  };
+
+  const handleCancelAssign = (e) => {
+    e.stopPropagation();
+    setAssigningFreelancerId(null);
+    setProposedCost("");
+  };
+
+  const handleConfirmAssign = async (e, f) => {
+    e.stopPropagation();
+    setIsSubmitting(true);
+    const parsedCost = proposedCost ? Number(proposedCost) : undefined;
+    const result = await assignFreelancer({
+      projectId,
+      freelancerId: f.id || f._id,
+      proposedCost: parsedCost,
+    });
+    setIsSubmitting(false);
+
     if (!result.ok) {
-      alert("ارجاع پروژه با خطا مواجه شد.");
+      alert("ارجاع پروژه با خطا مواجه شد: " + (result.message || ""));
       return;
     }
+
     alert(`پروژه با موفقیت به ${f.firstName} ${f.lastName} ارجاء داده شد.`);
-    onBack();
+    setAssignedFreelancerIds((prev) => [...prev, f.id || f._id]);
+    setAssigningFreelancerId(null);
+    setProposedCost("");
   };
 
   return (
@@ -100,13 +127,48 @@ const AssignFreelancerModal = ({
               onClick={() => onSelectFreelancer && onSelectFreelancer(f)}
               className="w-full h-[54px] border border-black rounded-[5px] px-4 flex justify-between items-center bg-white shadow-sm hover:bg-gray-50 cursor-pointer transition-all shrink-0"
             >
-              <button
-                type="button"
-                onClick={(e) => handleAssignDirect(e, f)}
-                className="h-[32px] px-5 bg-[#1c1c1e] text-white border border-black rounded-[4px] text-[11px] font-bold shadow-[0_2px_0_0_#000000] active:translate-y-[1px] cursor-pointer"
-              >
-                ارجاء
-              </button>
+              {assignedFreelancerIds.includes(f.id || f._id) ? (
+                <span className="h-[32px] px-3 bg-[#def7ec] text-[#03543f] border border-[#03543f] rounded-[4px] text-[11px] font-bold flex items-center justify-center">
+                  ارجاع شد ✓
+                </span>
+              ) : assigningFreelancerId === (f.id || f._id) ? (
+                <div
+                  className="flex items-center gap-1.5"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="number"
+                    placeholder="مبلغ پیشنهادی (تومان)"
+                    value={proposedCost}
+                    onChange={(e) => setProposedCost(e.target.value)}
+                    className="w-[140px] h-[32px] border border-black rounded-[4px] px-2 text-[11px] font-mono text-right bg-white focus:outline-none"
+                    autoFocus
+                  />
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={(e) => handleConfirmAssign(e, f)}
+                    className="h-[32px] px-3 bg-[#1c1c1e] text-white border border-black rounded-[4px] text-[11px] font-bold shadow-[0_2px_0_0_#000000] active:translate-y-[1px] cursor-pointer disabled:opacity-50"
+                  >
+                    {isSubmitting ? "..." : "تایید"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelAssign}
+                    className="h-[32px] px-2.5 bg-gray-200 text-black border border-gray-400 rounded-[4px] text-[11px] font-bold cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={(e) => handleStartAssign(e, f)}
+                  className="h-[32px] px-5 bg-[#1c1c1e] text-white border border-black rounded-[4px] text-[11px] font-bold shadow-[0_2px_0_0_#000000] active:translate-y-[1px] cursor-pointer"
+                >
+                  ارجاء
+                </button>
+              )}
 
               <div className="flex items-center gap-4 text-[11px]">
                 <div className="flex flex-col text-center">

@@ -14,11 +14,11 @@ const taskSchema = new mongoose.Schema(
     },
     title: { type: String, required: true },
     department: { type: String }, // نام دپارتمان به‌صورت متن برای نمایش سریع در کارت
-    startDate: { type: Date },
+    startDate: { type: String },
     lastUpdate: { type: Date, default: Date.now },
     employerApproval: { type: String , enum : ["approved" , "rejected" , "under review"]}, // تایید شده // در انتظار بررسی // رد شده
     approvalStatus: { type: String, enum: ["approved", "rejected", "under review"] }, // project stage // تایید شده // در انتظار بررسی // رد شده
-    employerApprovalDate: { type: Date },
+    employerApprovalDate: { type: String },
     statusText: { type: String , enum: ["open", "active", "completed"]}, // پیشنهاد شده / در حال اجرا / انجام شده
     relatedTicketId: { type: mongoose.Schema.Types.ObjectId, ref: "Ticket" },
     duration: { type: String },

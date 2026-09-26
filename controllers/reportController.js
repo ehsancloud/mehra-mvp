@@ -92,7 +92,7 @@ const previewReport = asyncHandler(async (req, res) => {
       paidAmount: p.paidAmount || 0,
       employer: p.employerId ? `${p.employerId.firstName || ""} ${p.employerId.lastName || ""}`.trim() : "تعیین نشده",
       supervisor: p.supervisorId ? `${p.supervisorId.firstName || ""} ${p.supervisorId.lastName || ""}`.trim() : "تعیین نشده",
-      deadline: p.deadline ? new Date(p.deadline).toISOString() : null,
+      deadline: p.deadline ? (typeof p.deadline === "string" && !p.deadline.includes("-") ? p.deadline : new Date(p.deadline).toISOString()) : null,
       createdAt: p.createdAt ? new Date(p.createdAt).toISOString() : null
     };
   });

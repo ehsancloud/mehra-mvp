@@ -8,6 +8,7 @@ import {
   getFinanceProjects,
   addTransaction,
   getUsers,
+  getUserProfile,
 } from "../data/api";
 import { useAuthStore } from "../store/authStore";
 
@@ -45,13 +46,34 @@ const SupervisorFinance = () => {
       setProjects(list);
       setSelectedProject(list[0] || null);
     });
-    getUsers({ role: "employer" }).then((list) => {
-      setEmployers(list || []);
-      if (list && list.length > 0) {
-        setTxTarget(list[0]._id || list[0].id);
-      }
-    });
+    
   }, []);
+  useEffect(() => {
+
+  const employerId = selectedProject?.projectId?.employerId;
+
+  if (!employerId) {
+    setEmployers([]);
+    setTxTarget("");
+    return;
+  }
+
+  getUserProfile(employerId)
+    .then((employer) => {
+      if (employer) {
+        setEmployers([employer]);
+        setTxTarget(employer._id || employer.id);
+      } else {
+        setEmployers([]);
+        setTxTarget("");
+      }
+    })
+    .catch((error) => {
+      console.error("Failed to load employer:", error);
+      setEmployers([]);
+      setTxTarget("");
+    });
+}, [selectedProject]);
 
   const handleAddTransaction = async (e) => {
     e.preventDefault();
@@ -97,6 +119,7 @@ const SupervisorFinance = () => {
       <header className="w-full flex justify-between items-center px-12 py-6 shrink-0 select-none">
         <h1 className="text-[32px] font-bold text-[#1c1c1e]" style={{ fontFamily: "Pinar-FD" }}>مدیریت مالی</h1>
         <UserHeader userInitial={currentSupervisor?.initial} hasNotification={true} />
+
       </header>
 
       <div className="flex-1 w-full overflow-y-auto px-12 pb-12 flex flex-col gap-6 scrollbar-none select-none">
@@ -218,7 +241,8 @@ const SupervisorFinance = () => {
                   required
                 >
                   <option value="" disabled>انتخاب کارفرما</option>
-                  {employers.map((emp) => (
+                  
+                  {employers.map((emp) => ( 
                     <option key={emp._id || emp.id} value={emp._id || emp.id}>
                       {emp.firstName ? `${emp.firstName} ${emp.lastName} (${emp.username})` : emp.username}
                     </option>

@@ -14,12 +14,12 @@ export const PROJECT_STATUS = {
 
 // Persian label shown to the user for each status code above.
 export const PROJECT_STATUS_LABELS = {
-  [PROJECT_STATUS.PENDING]: "در انتظار بررسی",
+  [PROJECT_STATUS.PENDING]: "در حال بررسی",
   [PROJECT_STATUS.AWAITING_SUBMISSION]: "در انتظار ارسال کار",
   [PROJECT_STATUS.IN_REVIEW]: "در حال بررسی",
-  [PROJECT_STATUS.APPROVED]: "تایید شده",
+  [PROJECT_STATUS.APPROVED]: "تایید خروجی کارفرما",
   [PROJECT_STATUS.REVISION_REQUESTED]: "درخواست اصلاحیه",
-  [PROJECT_STATUS.CLOSED]: "مختومه",
+  [PROJECT_STATUS.CLOSED]: "خاتمه یافته",
 };
 
 // Simplified status text shown on the employer's project list/details

@@ -54,7 +54,20 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
       setUniqueId(p.uniqueId || "");
       setEmail(p.email || "");
       setPhone(p.phone || "");
-      setLevel(p.level ? getLevelLabel(p.level) : LEVEL_LABELS.c);
+      const rawLevel =
+        p.level ||
+        (p.freelancer && p.freelancer.level) ||
+        user.level ||
+        (user.freelancer && user.freelancer.level);
+      const code =
+        rawLevel === "a" || rawLevel === "b" || rawLevel === "c"
+          ? rawLevel
+          : typeof rawLevel === "string" && (rawLevel.includes("A") || rawLevel.includes("۳") || rawLevel === "3")
+          ? "a"
+          : typeof rawLevel === "string" && (rawLevel.includes("B") || rawLevel.includes("۲") || rawLevel === "2")
+          ? "b"
+          : "c";
+      setLevel(LEVEL_LABELS[code] || LEVEL_LABELS.c);
       setIncome(p.income || 0);
       setSkills(p.skills || []);
       setRoles(p.roles || []);

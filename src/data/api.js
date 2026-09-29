@@ -118,7 +118,8 @@ function mapProject(p) {
     freelancersText: freelancers.length > 0 ? freelancers.map((f) => `${f.firstName} ${f.lastName}`).join(" ، ") : null,
     proposalStatus: p.stage === "open" ? "مشاهده درخواست‌ها" : undefined,
     applicationStatus: p.applicationStatus || (p.proposedCost ? "applied" : "not_applied"), 
-    proposedCost: p.proposedCost
+    proposedCost: p.proposedCost,
+    briefFileUrl: p.briefFileUrl || null
   };
 }
 
@@ -486,13 +487,19 @@ export async function declareReadiness({ projectId }) {
 
 export async function terminateProject({ projectId, role, rating, comment }) {
   try {
-    // 1. Add Review
-    await apiFetch(`/projects/${projectId}/reviews`, {
-      method: "POST",
-      body: JSON.stringify({ rating, comment })
-    });
-    // 2. Confirm Result (Ends project)
+    // 1. Confirm Result (Ends project)
     const confRes = await apiFetch(`/projects/${projectId}/confirmResult`, { method: "POST" });
+    // 2. Add Review
+    if (rating || comment) {
+      try {
+        await apiFetch(`/projects/${projectId}/reviews`, {
+          method: "POST",
+          body: JSON.stringify({ rating, comment })
+        });
+      } catch (reviewErr) {
+        console.error("Review submission error after project completion:", reviewErr);
+      }
+    }
     return { ok: true, project: mapProject(confRes.project) };
   } catch (err) {
     return { ok: false, message: err.message };

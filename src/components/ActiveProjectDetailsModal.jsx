@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { BiX } from "react-icons/bi";
+import { BiX, BiFile } from "react-icons/bi";
 import { useTicket } from "../context/TicketContext";
 import ReviewFreelancerProposalModal from "./ReviewFreelancerProposalModal";
 import EditProjectModal from "./EditProjectModal";
@@ -132,6 +132,19 @@ const ActiveProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                 <p className="text-[12px] text-gray-800 leading-relaxed text-right">
                   {projectData.description}
                 </p>
+                {projectData.briefFileUrl && (
+                  <div className="mt-3 flex items-center justify-start">
+                    <a
+                      href={projectData.briefFileUrl.startsWith("http") ? projectData.briefFileUrl : `http://localhost:3000${projectData.briefFileUrl.startsWith("/") ? "" : "/"}${projectData.briefFileUrl}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0f9ff] text-[#0369a1] border border-[#bae6fd] rounded-[5px] text-[11px] font-bold hover:bg-[#e0f2fe] transition-colors cursor-pointer"
+                    >
+                      <BiFile className="text-base" />
+                      <span>دانلود فایل پیوست / بریف پروژه</span>
+                    </a>
+                  </div>
+                )}
               </div>
 
               <div className="border-t border-gray-200 pt-3 flex flex-col gap-2">

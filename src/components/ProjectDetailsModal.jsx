@@ -4,6 +4,7 @@ import {
   BiMessageSquareDetail,
   BiReceipt,
   BiChevronLeft,
+  BiFile,
 } from "react-icons/bi";
 import { useTicket } from "../context/TicketContext";
 import { getProjectStatusStyle } from "../utils/projectStatus";
@@ -64,6 +65,7 @@ const ProjectDetailsModal = ({
     subProjects,
     status,
     applicationStatus,
+    briefFileUrl,
   } = project;
 
   // TODO(API): replace with a real invoice fetch/download
@@ -203,6 +205,19 @@ const ProjectDetailsModal = ({
               <p className="text-[12px] text-gray-800 leading-relaxed font-light">
                 {description || "توضیحاتی برای این پروژه ثبت نشده است."}
               </p>
+              {briefFileUrl && (
+                <div className="mt-2 flex items-center justify-start">
+                  <a
+                    href={briefFileUrl.startsWith("http") ? briefFileUrl : `http://localhost:3000${briefFileUrl.startsWith("/") ? "" : "/"}${briefFileUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0f9ff] text-[#0369a1] border border-[#bae6fd] rounded-[5px] text-[11px] font-bold hover:bg-[#e0f2fe] transition-colors cursor-pointer"
+                  >
+                    <BiFile className="text-base" />
+                    <span>دانلود فایل پیوست / بریف پروژه</span>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
 

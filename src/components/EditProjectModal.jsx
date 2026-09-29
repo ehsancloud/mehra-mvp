@@ -2,6 +2,21 @@ import React, { useEffect, useState } from "react";
 import { BiX, BiChevronDown, BiCloudUpload } from "react-icons/bi";
 import { getDepartments, getPriorities, getTickets, updateProject, uploadFile } from "../data/api";
 
+const STAGE_OPTIONS = [
+  { value: "open", label: "open (شروع نشده)" },
+  { value: "active", label: "active (در حال انجام)" },
+  { value: "completed", label: "completed (خاتمه یافته)" },
+];
+
+const STATUS_OPTIONS = [
+  "در حال بررسی",
+  "در حال انجام",
+  "درخواست اصلاحیه",
+  "خاتمه یافته",
+  "تایید خروجی کارفرما",
+  "پیشنهاد شده",
+];
+
 const EditProjectModal = ({ isOpen, onBack, projectData }) => {
   const [departments, setDepartments] = useState([]);
   const [priorities, setPriorities] = useState([]);
@@ -14,10 +29,15 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
   const [priority, setPriority] = useState("زیاد");
   const [department, setDepartment] = useState("");
   const [ticket, setTicket] = useState("تعیین نشده");
-  const [defaultFreelancerCost , setDefaultFreelancerCost] = useState("")
+  const [defaultFreelancerCost , setDefaultFreelancerCost] = useState("");
+  const [stage, setStage] = useState("open");
+  const [status, setStatus] = useState("در حال بررسی");
+
   const [showPriorityDrop, setShowPriorityDrop] = useState(false);
   const [showDeptDrop, setShowDeptDrop] = useState(false);
   const [showTicketDrop, setShowTicketDrop] = useState(false);
+  const [showStageDrop, setShowStageDrop] = useState(false);
+  const [showStatusDrop, setShowStatusDrop] = useState(false);
 
   const [briefFile, setBriefFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -39,6 +59,8 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
       setDepartment(projectData.department || "");
       setDefaultFreelancerCost(projectData.defaultFreelancerCost || 0);
       setTicket(projectData.ticketId ? `تیکت ${projectData.ticketId}` : "تعیین نشده");
+      setStage(projectData.stage || "open");
+      setStatus(projectData.status || "در حال بررسی");
     }
   }, [projectData]);
 
@@ -67,6 +89,8 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
       description,
       priority,
       department,
+      stage,
+      status,
       ticketId: tickets.find((t) => `تیکت ${t.id}` === ticket)?.id || null,
       briefFileUrl // ارسال آدرس جدید به بک‌اند
     });
@@ -262,10 +286,86 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
                 />
               </div>
 
-              <label className="w-full h-[180px] border-2 border-dashed border-black rounded-[8px] flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-gray-50 transition-all p-4">
-                <BiCloudUpload className="text-6xl text-black" />
-                <span className="text-[13px] font-bold text-black">
-                  {briefFile ? briefFile.name : "آپلود فایل بریف جدید"}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative w-full">
+                  <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                    مرحله (Stage)
+                  </label>
+                  <div
+                    onClick={() => {
+                      setShowStageDrop(!showStageDrop);
+                      setShowStatusDrop(false);
+                      setShowPriorityDrop(false);
+                      setShowDeptDrop(false);
+                      setShowTicketDrop(false);
+                    }}
+                    className="w-full h-[40px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-white cursor-pointer"
+                  >
+                    <BiChevronDown className="text-xl" />
+                    <span className="font-bold text-black truncate">
+                      {STAGE_OPTIONS.find((s) => s.value === stage)?.label || stage}
+                    </span>
+                  </div>
+
+                  {showStageDrop && (
+                    <div className="absolute top-[44px] right-0 left-0 bg-white border border-black rounded-[5px] shadow-[0_3px_0_0_#000000] flex flex-col p-1 z-30">
+                      {STAGE_OPTIONS.map((s) => (
+                        <div
+                          key={s.value}
+                          onClick={() => {
+                            setStage(s.value);
+                            setShowStageDrop(false);
+                          }}
+                          className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
+                        >
+                          {s.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative w-full">
+                  <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                    وضعیت (Status)
+                  </label>
+                  <div
+                    onClick={() => {
+                      setShowStatusDrop(!showStatusDrop);
+                      setShowStageDrop(false);
+                      setShowPriorityDrop(false);
+                      setShowDeptDrop(false);
+                      setShowTicketDrop(false);
+                    }}
+                    className="w-full h-[40px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-white cursor-pointer"
+                  >
+                    <BiChevronDown className="text-xl" />
+                    <span className="font-bold text-black truncate">{status}</span>
+                  </div>
+
+                  {showStatusDrop && (
+                    <div className="absolute top-[44px] right-0 left-0 bg-white border border-black rounded-[5px] shadow-[0_3px_0_0_#000000] flex flex-col p-1 z-30 max-h-[140px] overflow-y-auto">
+                      {STATUS_OPTIONS.map((st) => (
+                        <div
+                          key={st}
+                          onClick={() => {
+                            setStatus(st);
+                            setShowStatusDrop(false);
+                          }}
+                          className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
+                        >
+                          {st}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <label className="w-full h-[120px] border-2 border-dashed border-black rounded-[8px] flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-50 transition-all p-3">
+                <BiCloudUpload className="text-4xl text-black" />
+                <span className="text-[12px] font-bold text-black text-center line-clamp-1">
+                  {briefFile ? briefFile.name : (projectData.briefFileUrl ? "تغییر فایل بریف پروژه" : "آپلود فایل بریف جدید")}
                 </span>
                 <input
                   type="file"

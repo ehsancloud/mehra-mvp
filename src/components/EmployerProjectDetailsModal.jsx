@@ -5,6 +5,7 @@ import {
   BiStar,
   BiChevronLeft,
   BiReceipt,
+  BiFile,
 } from "react-icons/bi";
 import { FaStar } from "react-icons/fa";
 import { useTicket } from "../context/TicketContext";
@@ -196,6 +197,19 @@ const EmployerProjectDetailsModal = ({
               <p className="text-[12px] text-gray-800 leading-relaxed font-light">
                 {project.description || "توضیحاتی برای این پروژه ثبت نشده است."}
               </p>
+              {project.briefFileUrl && (
+                <div className="mt-2 flex items-center justify-start">
+                  <a
+                    href={project.briefFileUrl.startsWith("http") ? project.briefFileUrl : `http://localhost:3000${project.briefFileUrl.startsWith("/") ? "" : "/"}${project.briefFileUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0f9ff] text-[#0369a1] border border-[#bae6fd] rounded-[5px] text-[11px] font-bold hover:bg-[#e0f2fe] transition-colors cursor-pointer"
+                  >
+                    <BiFile className="text-base" />
+                    <span>دانلود فایل پیوست / بریف پروژه</span>
+                  </a>
+                </div>
+              )}
             </div>
 
             {project.isSuperProject && project.stage === "active" && (

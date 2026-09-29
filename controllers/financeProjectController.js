@@ -226,8 +226,11 @@ const createTransaction = asyncHandler(async (req, res) => {
       text : `درخواست پرداخت توسط ناظر برای شما صادر شد به مبلغ ${req.body.amount}`
     })
     
+  } else if(
+    req.body.status === "بلاک شده"
+  ){
+    financeProject.blockedAmount = financeProject.blockedAmount + req.body.amount;
   }
-
 
   await financeProject.save();
 

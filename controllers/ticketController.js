@@ -219,11 +219,11 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
 
       employerId: ticket.employer,
 
-      supervisorId: supervisorId || ticket.supervisor,
+      supervisorId: supervisorId || ticket.supervisor || req.user._id,
 
       freelancersId: [],
 
-      stage: "active",
+      stage: "open",
 
       status: "در حال بررسی",
 
@@ -274,11 +274,11 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
     proposalBudget: Number(proposalBudget) || 0,
     paidAmount: 0,
 
-    deadline,
+    deadline : subProjects[subProjects.length - 1].deadline,
     
     employerId: ticket.employer,
 
-    supervisorId: supervisorId || ticket.supervisor,
+    supervisorId: supervisorId || ticket.supervisor || req.user._id,
 
     freelancersId: [],
 

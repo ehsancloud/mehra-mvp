@@ -270,18 +270,25 @@ const getUserProfile = asyncHandler(async (req, res) => {
 
   let levelLabel = null;
   let resolvedSkills = [];
+  let rateScore = 0;
+  let availableForProposals = true;
+
   if (user.role === "freelancer") {
     const freelancerProfile = await Freelancer.findOne({ userId: user._id })
-      .select("level")
+      .select("level rateScore availableForProposals")
       .lean();
-    levelLabel = freelancerProfile?.level ? getLevelLabel(freelancerProfile.level) : null;
+    levelLabel = freelancerProfile?.level ? freelancerProfile.level : null;
+    rateScore = freelancerProfile?.rateScore ? freelancerProfile.rateScore : 0;
+    availableForProposals = freelancerProfile?.availableForProposals ? freelancerProfile.availableForProposals: false;
     resolvedSkills = user.skills;
   }
 
   const userProfile = {
     ...user,
-    levelLabel,
+    level : levelLabel,
     skills: resolvedSkills,
+    rateScore : rateScore,
+    availableForProposals : availableForProposals,
 
     projects: projects.map((project, index) => ({
       id: project._id,
@@ -304,31 +311,67 @@ const getUserProfile = asyncHandler(async (req, res) => {
 // walletBalance, income, status etc. are deliberately excluded - they need
 // their own dedicated flows (registerRole, a password-reset endpoint,
 // wallet charge/release), not a generic PATCH.
-const UPDATABLE_USER_FIELDS = [
-  "firstName", "lastName", "avatarColor", "initial",
-  "birthDate", "province", "city", "education",
+const USER_UPDATABLE_FIELDS = [
+  "firstName",
+  "lastName",
+  "avatarColor",
+  "initial",
+  "birthDate",
+  "province",
+  "city",
+  "education",
+  "skills",
+];
+
+const FREELANCER_UPDATABLE_FIELDS = [
+  "level",
+  "availableForProposals",
 ];
 
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const patch = {};
-  for (const field of UPDATABLE_USER_FIELDS) {
-    if (req.body[field] !== undefined) patch[field] = req.body[field];
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found!");
+  }
+
+  if (user.role === "freelancer") {
+    const freelancerPatch = {};
+
+    for (const field of FREELANCER_UPDATABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        freelancerPatch[field] = req.body[field];
+      }
+    }
+
+    await Freelancer.findOneAndUpdate(
+      { userId: id },
+      { $set: freelancerPatch },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  }
+
+  const userPatch = {};
+
+  for (const field of USER_UPDATABLE_FIELDS) {
+    if (req.body[field] !== undefined) {
+      userPatch[field] = req.body[field];
+    }
   }
 
   const updatedUser = await User.findByIdAndUpdate(
     id,
-    { $set: patch },
+    { $set: userPatch },
     {
       new: true,
       runValidators: true,
     }
   ).lean();
-
-  if (!updatedUser) {
-    throw new ApiError(404, "User not found!");
-  }
 
   res.status(200).json({
     success: true,
@@ -337,7 +380,16 @@ const updateUser = asyncHandler(async (req, res) => {
   });
 });
 
+
 const getMyProfile = asyncHandler(async (req, res) => {
+  let moreData;
+
+  if (req.user.role === "freelancer") {
+    moreData = await Freelancer.findOne({
+      userId: req.user._id,
+    }).lean();
+  }
+
   const user = await User.findById(req.user._id)
     .select("-password")
     .lean();
@@ -348,7 +400,10 @@ const getMyProfile = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    data: user,
+    data: {
+      ...user,
+      ...moreData,
+    },
   });
 });
 
@@ -547,7 +602,13 @@ const registerRole = asyncHandler(async (req, res) => {
 
     // New token contains the new active role
     const tokens = signTokens(user);
-
+    let freelancer = null;
+    if ( role === "freelancer"){
+      freelancer = await Freelancer.findOne({userId : user._id}).select("level");
+      if(!freelancer){
+        throw new ApiError(404 , "freelancer not found to catch its data!");
+      }
+    }
     res.status(201).json({
         message: alreadyHasRole
             ? `Role '${role}' selected successfully`
@@ -558,6 +619,9 @@ const registerRole = asyncHandler(async (req, res) => {
             role: user.role,
             roles: user.roles,
             uniqueId: user.uniqueId,
+            ...(freelancer?.level
+            ? { level: freelancer.level }
+            : {}),
         },
 
         ...tokens,
@@ -583,6 +647,13 @@ const login = asyncHandler(async (req, res) => {
   if (user.status !== "active") {
     throw new ApiError(403, "حساب کاربری غیرفعال است");
   }
+  let freelancer = null;
+
+  if (user.role === "freelancer") {
+    freelancer = await Freelancer.findOne({
+      userId: user._id,
+    }).select("level");
+  }
 
   const tokens = signTokens(user);
   res.json({
@@ -592,6 +663,9 @@ const login = asyncHandler(async (req, res) => {
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
+      ...(freelancer?.level
+        ? { level: freelancer.level }
+        : {}),
     },
     ...tokens,
   });

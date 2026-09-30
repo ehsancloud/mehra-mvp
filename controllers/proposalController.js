@@ -279,6 +279,7 @@ const getProposalsForProject = asyncHandler(async (req, res) => {
                 formattedProposals[0].projectId.departmentId.name
             )
         ) {
+            console.log(proposals.length , formattedProposals[0] ,  " - " )
             throw new ApiError(
                 403,
                 "You can't view proposals from another department!"

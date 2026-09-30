@@ -1077,7 +1077,7 @@ const getProjects = asyncHandler(async (req, res) => {
         // of the real budget
         // ------------------------------------------
         if (project.stage === "open") {
-          const projectData = project.toObject();
+          const projectData = { ...project };
 
           delete projectData.budget;
 
@@ -1102,7 +1102,7 @@ const getProjects = asyncHandler(async (req, res) => {
           status: "accepted",
         }).select("proposedCost");
 
-        const projectData = project.toObject();
+        const projectData = { ...project };
 
         delete projectData.budget;
 

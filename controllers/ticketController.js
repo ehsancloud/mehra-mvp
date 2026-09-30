@@ -47,7 +47,8 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
     supervisorId,
     isSuperProject,
     subProjects,
-    briefFileUrl
+    briefFileUrl,
+    editCount
   } = req.body;
 
   // ------------------------------------------
@@ -76,7 +77,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
   if (!isSuperProject) {
     const project = await Project.create({
       title: title || ticket.title,
-
+      editCount : editCount || 1,
       description: description || ticket.description,
 
       departmentId: resolvedDeptId,
@@ -196,7 +197,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
       title: subProject.title,
       
       description: subProject.description || description || ticket.description,
-
+      editCount : subProject.editCount || editCount || 1,
       departmentId:
         (subProject.departmentId && mongoose.isValidObjectId(subProject.departmentId))
           ? subProject.departmentId
@@ -261,7 +262,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
 
   const superProject = await Project.create({
     title: title || ticket.title,
-
+    editCount : editCount || 1,
     description: description || ticket.description,
 
     departmentId: resolvedDeptId,

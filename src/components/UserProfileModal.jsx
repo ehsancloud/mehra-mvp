@@ -67,6 +67,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
           : typeof rawLevel === "string" && (rawLevel.includes("B") || rawLevel.includes("۲") || rawLevel === "2")
           ? "b"
           : "c";
+      console.log(code ,rawLevel)
       setLevel(LEVEL_LABELS[code] || LEVEL_LABELS.c);
       setIncome(p.income || 0);
       setSkills(p.skills || []);

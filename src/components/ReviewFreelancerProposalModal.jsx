@@ -23,14 +23,14 @@ const ReviewFreelancerProposalModal = ({
 
   if (!isOpen || !freelancer) return null;
 
-  // TODO(API): POST /projects/{projectId}/proposals/{freelancer.id}/decision
+  // TODO(API): PUT /projects/{projectId}/proposals/{proposal.id}
   const handleDecision = async (status) => {
     const result = await reviewProposal({
       projectId,
-      freelancerId: freelancer.id,
+      freelancerId: freelancer.freelancerId._id,
       status,
     });
-
+    console.log(projectId , freelancer , result)
     if (!result.ok) {
       alert("ثبت تصمیم با خطا مواجه شد.");
       return;
@@ -136,7 +136,8 @@ const ReviewFreelancerProposalModal = ({
               تگ‌های توانایی (دپارتمان)
             </label>
             <div className="w-full border border-black rounded p-2 bg-white flex flex-wrap gap-2">
-              {(freelancer.skills || []).map((skill, idx) => (
+             
+              {profile && profile.skills?.length !== 0 && (profile.skills || []).map((skill, idx) => (
                 <span
                   key={idx}
                   className="bg-[#dbeaff] text-[#1e40af] border border-blue-300 rounded px-2.5 py-0.5 text-[11px] font-bold"

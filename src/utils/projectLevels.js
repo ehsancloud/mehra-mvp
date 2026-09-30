@@ -9,9 +9,12 @@ export const LEVEL_RANK = { a: 3, b: 2, c: 1 };
 // lists, etc). Keeping the mapping in one place means the "سطح ۱/۲/۳" text
 // shown across different panels can never drift out of sync with each
 // other or with the access-control codes above.
-export const LEVEL_LABELS = { c: "سطح ۱", b: "سطح ۲", a: "سطح ۳" };
+export const LEVEL_LABELS = { a: "سطح ۱", b: "سطح ۲", c: "سطح ۳" };
 
 export const getLevelLabel = (levelCode) => LEVEL_LABELS[levelCode] || levelCode;
 
 export const canAccessProjectLevel = (projectLevel, userLevel) =>
-  LEVEL_RANK[projectLevel] <= LEVEL_RANK[userLevel];
+{
+  console.log(projectLevel , userLevel);
+  return LEVEL_RANK[projectLevel] <= LEVEL_RANK[userLevel];
+}

@@ -335,9 +335,9 @@ export async function getPriorities() {
 // پیشنهادات (Proposals)
 // ---------------------------------------------------------------------------
 
-export function getProposalsForProjectSync(projectId) {
-  return []; // Mock sync counter, replaced by backend populated fields
-}
+// export function getProposalsForProjectSync(projectId) {
+//   return []; // Mock sync counter, replaced by backend populated fields
+// }
 
 export async function getProposalStatusLabel(projectId) {
   try {
@@ -351,23 +351,35 @@ export async function getProposalStatusLabel(projectId) {
 export async function getProposalsForProject(projectId) {
   try {
     const res = await apiFetch(`/projects/${projectId}/proposals`);
-    return res.map(p => ({
+
+    return res.map((p) => ({
       id: p._id,
       projectId: p.projectId?._id || p.projectId,
+
       freelancerId: p.freelancerId,
+
+      // Keep the freelancer object from backend
+      freelancer: p.freelancer
+        ? {
+            firstName: p.freelancer.firstName,
+            lastName: p.freelancer.lastName,
+            username: p.freelancer.username,
+            level: p.freelancer.level,
+            rateScore: p.freelancer.rateScore,
+            initial: "F",
+          }
+        : null,
+
       status: p.status,
       proposedCost: p.proposedCost,
       note: p.note,
-      submittedAt: p.submittedAt ? new Date(p.submittedAt).toLocaleDateString('fa-IR') : "",
-      // Mapped fallbacks for UI
-      firstName: p.firstName,
-      lastName: p.lastName,
-      username: p.username,
-      initial: "F",
-      level: p.level,
-      rateScore: p.rateScore
+
+      submittedAt: p.submittedAt
+        ? new Date(p.submittedAt).toLocaleDateString("fa-IR")
+        : "",
     }));
   } catch (err) {
+    console.error("getProposalsForProject error:", err);
     return [];
   }
 }
@@ -387,7 +399,7 @@ export async function createProposal(projectId, payload) {
 export async function reviewProposal({ projectId, freelancerId, status }) {
   try {
     const proposals = await getProposalsForProject(projectId);
-    const target = proposals.find(p => p.freelancerId === freelancerId || p.id === freelancerId);
+    const target = proposals.find(p => p.freelancerId._id === freelancerId || p.freelancerId === freelancerId);
     if (!target) throw new Error("Proposal not found");
 
     await apiFetch(`/projects/${projectId}/proposals/${target.id}`, {

@@ -15,7 +15,6 @@ const formatPrice = (price) => {
 // (not-yet-assigned) project and its incoming freelancer proposals.
 const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
   const { openChat } = useTicket();
-
   const [activeStep, setActiveStep] = useState(null); // 'assign' | 'review' | 'edit' | 'terminate'
   const [selectedFreelancer, setSelectedFreelancer] = useState(null);
   const [canSendProposals, setCanSendProposals] = useState(true);
@@ -23,16 +22,25 @@ const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
 
   useEffect(() => {
     if (!isOpen || !projectData) return;
-    setCanSendProposals(projectData.canSendProposals ?? true);
-    getProposalsForProject(projectData.id).then(setProposals);
-  }, [isOpen, projectData]);
 
+    setCanSendProposals(projectData.canSendProposals ?? true);
+
+    getProposalsForProject(projectData.id)
+      .then((data) => {
+        setProposals(data);
+      })
+      .catch((err) => {
+        console.error("Failed to load proposals:", err);
+        setProposals([]);
+      });
+  }, [isOpen, projectData]);
+  
   if (!isOpen || !projectData) return null;
 
   const handleOpenAssign = () => setActiveStep("assign");
 
-  const handleOpenProposal = (freelancer) => {
-    setSelectedFreelancer(freelancer);
+  const handleOpenProposal = (freelancer) => { 
+    setSelectedFreelancer({id : freelancer.freelancerId._id , freelancerId : freelancer.freelancerId , ...freelancer.freelancer});
     setActiveStep("review");
   };
 
@@ -141,7 +149,11 @@ const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                 {projectData.briefFileUrl && (
                   <div className="mt-3 flex items-center justify-start">
                     <a
-                      href={projectData.briefFileUrl.startsWith("http") ? projectData.briefFileUrl : `http://localhost:3000${projectData.briefFileUrl.startsWith("/") ? "" : "/"}${projectData.briefFileUrl}`}
+                      href={
+                        projectData.briefFileUrl.startsWith("http")
+                          ? projectData.briefFileUrl
+                          : `http://localhost:3000${projectData.briefFileUrl.startsWith("/") ? "" : "/"}${projectData.briefFileUrl}`
+                      }
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0f9ff] text-[#0369a1] border border-[#bae6fd] rounded-[5px] text-[11px] font-bold hover:bg-[#e0f2fe] transition-colors cursor-pointer"
@@ -181,7 +193,7 @@ const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                 <div className="flex flex-col gap-2 max-h-[160px] overflow-y-auto scrollbar-none">
                   {proposals.map((f) => (
                     <div
-                      key={f.id}
+                      key={f._id}
                       className="w-full h-[52px] border border-black rounded-[5px] px-3 flex justify-between items-center bg-white shadow-sm"
                     >
                       <button
@@ -196,39 +208,61 @@ const SupervisorProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
                         onClick={() => handleOpenProposal(f)}
                         className="flex items-center gap-4 text-[11px] cursor-pointer"
                       >
+                        {/* price */}
+                        <div className="flex flex-col text-center">
+                          <span className="text-[9px] text-gray-400">
+                            مبلغ پیشنهادی
+                          </span>
+                          
+                          <span className="font-bold text-black">
+                            {f.proposedCost ?? "-"}
+                          </span>
+                        </div>
+
+                        {/* Rate */}
                         <div className="flex flex-col text-center">
                           <span className="text-[9px] text-gray-400">
                             امتیاز
                           </span>
+
                           <span className="font-bold text-black">
-                            {f.score}
+                            {f.freelancer?.rateScore ?? "-"}
                           </span>
                         </div>
+
+                        {/* Level */}
                         <div className="flex flex-col text-center">
                           <span className="text-[9px] text-gray-400">سطح</span>
+
                           <span className="font-bold text-black">
-                            {f.level}
+                            {f.freelancer?.level ?? "-"}
                           </span>
                         </div>
+
+                        {/* Name */}
                         <div className="flex items-center gap-2">
                           <div className="flex flex-col text-right">
                             <span className="text-[9px] text-gray-400">
                               نام خانوادگی
                             </span>
+
                             <span className="font-bold text-black">
-                              {f.lastName}
+                              {f.freelancer?.lastName ?? "-"}
                             </span>
                           </div>
+
                           <div className="flex flex-col text-right">
                             <span className="text-[9px] text-gray-400">
                               نام
                             </span>
+
                             <span className="font-bold text-black">
-                              {f.firstName}
+                              {f.freelancer?.firstName ?? "-"}
                             </span>
                           </div>
+
                           <div className="w-7 h-7 rounded-full bg-[#3b82f6] text-white flex items-center justify-center font-bold text-[10px]">
-                            {f.initial}
+                            {f.freelancer?.initial || "F"}
                           </div>
                         </div>
                       </div>

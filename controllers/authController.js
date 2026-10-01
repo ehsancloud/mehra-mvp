@@ -1,0 +1,722 @@
+const mongoose = require("mongoose");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const asyncHandler = require("../utils/asyncHandler");
+const ApiError = require("../utils/ApiError");
+const { User, Freelancer, Employer, Supervisor, Admin, Ticket, Department, TicketMessage } = require("../models");
+const Project = require("../models/Project");
+const { getLevelLabel, resolveDepartmentName } = require("../utils/resolvers");
+
+
+const getUsers = asyncHandler(async (req, res) => {
+  const { role, query, department, departmentId, projectId } = req.query;
+
+  const andConditions = [];
+
+  if (role) {
+    andConditions.push({ role });
+  }
+
+  // Filter by department if requested (directly, or through projectId)
+  let targetDeptId = departmentId;
+  let targetDeptName = department;
+
+  if (projectId && !targetDeptId && !targetDeptName && mongoose.Types.ObjectId.isValid(projectId)) {
+    const proj = await Project.findById(projectId);
+    if (proj?.departmentId) {
+      targetDeptId = proj.departmentId;
+    }
+  }
+
+  if (targetDeptId || targetDeptName) {
+    let dept = null;
+    if (targetDeptId && mongoose.Types.ObjectId.isValid(targetDeptId)) {
+      dept = await Department.findById(targetDeptId);
+    }
+    if (!dept && targetDeptName) {
+      dept = await Department.findOne({ name: targetDeptName });
+    }
+
+    const deptFreelancerIds = dept?.freelancers || [];
+    const deptName = dept?.name || targetDeptName;
+
+    const deptMatches = [
+      { _id: { $in: deptFreelancerIds } },
+      { skills: deptName },
+    ];
+    if (dept?._id) {
+      deptMatches.push({ skills: dept._id.toString() });
+    }
+    andConditions.push({ $or: deptMatches });
+  }
+
+  if (query?.trim()) {
+    const q = query.trim();
+    andConditions.push({
+      $or: [
+        { firstName: { $regex: q, $options: "i" } },
+        { lastName: { $regex: q, $options: "i" } },
+        { username: { $regex: q, $options: "i" } },
+      ],
+    });
+  }
+
+  const filter = andConditions.length > 0 ? { $and: andConditions } : {};
+  const users = await User.find(filter);
+
+  res.status(200).json({
+    success: true,
+    users,
+  });
+});
+
+const ROLE_LABELS = {
+  user: "کاربر عادی",
+  freelancer: "فریلنسر",
+  employer: "کارفرما",
+  supervisor: "ناظر",
+  admin: "ادمین",
+};
+
+const getUserDirectory = asyncHandler(async (req, res) => {
+  const users = await User.find().lean();
+
+  // level lives on the separate Freelancer collection, not on User itself -
+  // fetch it in one query instead of per-user.
+  const freelancerIds = users.filter((u) => u.role === "freelancer").map((u) => u._id);
+  const freelancerProfiles = await Freelancer.find({ userId: { $in: freelancerIds } })
+    .select("userId level")
+    .lean();
+  const levelByUserId = new Map(freelancerProfiles.map((f) => [f.userId.toString(), f.level]));
+
+  const userDirectory = users.map((user) => {
+    const level = levelByUserId.get(user._id.toString());
+    return {
+      ...user,
+      roleKey: user.role,
+      roleText: ROLE_LABELS[user.role] || user.role,
+      levelLabel: level ? getLevelLabel(level) : null,
+    };
+  });
+
+  res.status(200).json({
+    success: true,
+    users: userDirectory,
+  });
+});
+
+
+const getDeptUserDirectory = asyncHandler(async (req, res) => {
+  // ------------------------------------------
+  // GET USERS
+  // ------------------------------------------
+
+  const [supervisors, employers, freelancers] = await Promise.all([
+    User.find({ role: "supervisor" })
+      .select("firstName lastName initial username")
+      .lean(),
+
+    User.find({ role: "employer" })
+      .select("firstName lastName initial username")
+      .lean(),
+
+    User.find({ role: "freelancer" })
+      .select("firstName lastName initial username income")
+      .lean(),
+  ]);
+
+  // ------------------------------------------
+  // GET PROJECTS
+  // ------------------------------------------
+
+  const supervisorIds = supervisors.map((user) => user._id);
+  const employerIds = employers.map((user) => user._id);
+
+  const [supervisorProjects, employerProjects] = await Promise.all([
+    Project.find({
+      supervisorId: { $in: supervisorIds },
+    })
+      .select("title supervisorId")
+      .lean(),
+
+    Project.find({
+      employerId: { $in: employerIds },
+      stage: "active",
+    })
+      .select("title employerId")
+      .lean(),
+  ]);
+
+  // ------------------------------------------
+  // BUILD RESPONSE
+  // ------------------------------------------
+
+  const supervisorsData = supervisors.map((user) => ({
+    id: user._id,
+    name: `${user.firstName} ${user.lastName}`,
+    initial: user.initial,
+    username: user.username,
+    role: "supervisor",
+
+    projects: supervisorProjects
+      .filter(
+        (project) =>
+          project.supervisorId.toString() === user._id.toString()
+      )
+      .map((project) => project.title),
+  }));
+
+  const employersData = employers.map((user) => ({
+    id: user._id,
+    name: `${user.firstName} ${user.lastName}`,
+    initial: user.initial,
+    username: user.username,
+    role: "employer",
+
+    debt: 0,
+
+    activeProjects: employerProjects
+      .filter(
+        (project) =>
+          project.employerId.toString() === user._id.toString()
+      )
+      .map((project) => project.title),
+  }));
+
+  const freelancersData = freelancers.map((user) => ({
+    id: user._id,
+    name: `${user.firstName} ${user.lastName}`,
+    initial: user.initial,
+    username: user.username,
+
+    role: "freelancer",
+
+    credit: user.income || 0,
+  }));
+
+  // ------------------------------------------
+  // RESPONSE
+  // ------------------------------------------
+
+  res.status(200).json({
+    success: true,
+    data: {
+      supervisors: supervisorsData,
+      employers: employersData,
+      freelancers: freelancersData,
+    },
+  });
+});
+
+
+const getUserProfile = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  // ------------------------------------------
+  // AUTHORIZATION
+  // ------------------------------------------
+
+  const restrictedRoles = [
+    "user",
+    "freelancer",
+    "employer"
+  ];
+
+  if (
+    restrictedRoles.includes(req.user.role) &&
+    req.user._id.toString() !== id
+  ) {
+    throw new ApiError(
+      403,
+      "You are not allowed to view this profile!"
+    );
+  }
+
+  // ------------------------------------------
+  // FIND USER
+  // ------------------------------------------
+
+  const user = await User.findById(id)
+    .select("-password")
+    .lean();
+
+  if (!user) {
+    throw new ApiError(
+      404,
+      "User not found!"
+    );
+  }
+
+  // ------------------------------------------
+  // FIND USER PROJECTS
+  // ------------------------------------------
+
+  const projects = await Project.find({
+    $or: [
+      {
+        freelancersId: user._id,
+      },
+      {
+        employerId: user._id,
+      },
+    ],
+  })
+    .select("_id title")
+    .lean();
+
+  // ------------------------------------------
+  // BUILD PROFILE
+  // ------------------------------------------
+
+  let levelLabel = null;
+  let resolvedSkills = [];
+  let rateScore = 0;
+  let availableForProposals = true;
+
+  let departments = [];
+
+  if (user.role === "freelancer") {
+    const freelancerProfile = await Freelancer.findOne({ userId: user._id })
+      .select("level rateScore availableForProposals")
+      .lean();
+    levelLabel = freelancerProfile?.level ? freelancerProfile.level : null;
+    rateScore = freelancerProfile?.rateScore ? freelancerProfile.rateScore : 0;
+    availableForProposals = freelancerProfile?.availableForProposals ? freelancerProfile.availableForProposals: false;
+    resolvedSkills = user.skills;
+  }
+  if(user.role === "supervisor"){
+    const supervisorProfile = await Supervisor.findOne({userId : user._id})
+      .select("departments")
+      .lean();
+    departments = Array.isArray(supervisorProfile?.departments)
+    ? supervisorProfile.departments
+    : [];
+  }
+
+  const userProfile = {
+    ...user,
+    level : levelLabel,
+    skills: resolvedSkills,
+    rateScore : rateScore,
+    availableForProposals : availableForProposals,
+    departments : departments,
+    projects: projects.map((project, index) => ({
+      id: project._id,
+      title: project.title,
+      isHighlighted: index === 0,
+    })),
+  };
+
+  // ------------------------------------------
+  // RESPONSE
+  // ------------------------------------------
+
+  res.status(200).json({
+    success: true,
+    data: userProfile,
+  });
+});
+
+// Only these fields may be changed through this endpoint. role, password,
+// walletBalance, income, status etc. are deliberately excluded - they need
+// their own dedicated flows (registerRole, a password-reset endpoint,
+// wallet charge/release), not a generic PATCH.
+const USER_UPDATABLE_FIELDS = [
+  "firstName",
+  "lastName",
+  "avatarColor",
+  "initial",
+  "birthDate",
+  "province",
+  "city",
+  "education",
+  "skills",
+];
+
+const FREELANCER_UPDATABLE_FIELDS = [
+  "level",
+  "availableForProposals",
+];
+const SUPERVISOR_UPDATEABLE_FIELDS = [
+  "departments"
+]
+
+const updateUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  const user = await User.findById(id);
+
+  if (!user) {
+    throw new ApiError(404, "User not found!");
+  }
+
+  if (user.role === "freelancer") {
+    const freelancerPatch = {};
+
+    for (const field of FREELANCER_UPDATABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        freelancerPatch[field] = req.body[field];
+      }
+    }
+
+    await Freelancer.findOneAndUpdate(
+      { userId: id },
+      { $set: freelancerPatch },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+  }
+  if (user.role === "supervisor"){
+    const supervisorPatch = {};
+    for (const field of SUPERVISOR_UPDATEABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        supervisorPatch[field] = req.body[field];
+      }
+    }
+
+    await Supervisor.findOneAndUpdate(
+      { userId: id },
+      { $set: supervisorPatch },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+  }
+
+  const userPatch = {};
+  if(req.user.role === "admin"){
+    USER_UPDATABLE_FIELDS.push("roles")
+  }
+  for (const field of USER_UPDATABLE_FIELDS) {
+    if (req.body[field] !== undefined) {
+      userPatch[field] = req.body[field];
+    }
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    id,
+    { $set: userPatch },
+    {
+      new: true,
+      runValidators: true,
+    }
+  ).lean();
+
+  res.status(200).json({
+    success: true,
+    message: "User updated successfully.",
+    data: updatedUser,
+  });
+});
+
+
+const getMyProfile = asyncHandler(async (req, res) => {
+  let moreData;
+
+  if (req.user.role === "freelancer") {
+    moreData = await Freelancer.findOne({
+      userId: req.user._id,
+    }).lean();
+  }
+
+  const user = await User.findById(req.user._id)
+    .select("-password")
+    .lean();
+
+  if (!user) {
+    throw new ApiError(404, "User not found!");
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      ...user,
+      ...moreData,
+    },
+  });
+});
+
+
+const ROLE_MODEL = {
+    freelancer: Freelancer,
+    employer: Employer,
+    supervisor: Supervisor,
+    admin: Admin,
+};
+
+const signTokens = (user) => {
+  const accessToken = jwt.sign(
+    { sub: user._id, role: user.role },
+    process.env.JWT_ACCESS_SECRET,
+    {
+      expiresIn: process.env.JWT_ACCESS_EXPIRES,
+    },
+  );
+  const refreshToken = jwt.sign(
+    { sub: user._id },
+    process.env.JWT_REFRESH_SECRET,
+    {
+      expiresIn: process.env.JWT_REFRESH_EXPIRES,
+    },
+  );
+  return { accessToken, refreshToken };
+};
+const register = asyncHandler(async (req, res) => {
+    const { password, ...rest } = req.body;
+
+    const trimmedUsername = rest.username?.trim();
+    if (!trimmedUsername) {
+        throw new ApiError(400, "نام کاربری الزامی است");
+    }
+
+    const existingUser = await User.findOne({
+        $or: [
+            { username: trimmedUsername },
+            { email: rest.email?.toLowerCase().trim() },
+            { phone: rest.phone?.trim() },
+            { nationalCode: rest.nationalCode?.trim() }
+        ]
+    });
+
+    if (existingUser) {
+        if (existingUser.username?.toLowerCase() === trimmedUsername.toLowerCase()) {
+            throw new ApiError(400, "این نام کاربری قبلاً ثبت شده است.");
+        }
+        if (existingUser.email?.toLowerCase() === rest.email?.toLowerCase().trim()) {
+            throw new ApiError(400, "این ایمیل قبلاً ثبت شده است.");
+        }
+        if (existingUser.phone === rest.phone?.trim()) {
+            throw new ApiError(400, "این شماره همراه قبلاً ثبت شده است.");
+        }
+        if (existingUser.nationalCode === rest.nationalCode?.trim()) {
+            throw new ApiError(400, "این کد ملی قبلاً ثبت شده است.");
+        }
+        throw new ApiError(400, "کاربری با این مشخصات قبلاً ثبت شده است.");
+    }
+
+    const hashed = await bcrypt.hash(password, 12);
+
+    const user = await User.create({
+        ...rest,
+        username: trimmedUsername,
+        uniqueId: `US${Date.now()}`,
+        password: hashed
+    });
+
+    const tokens = signTokens(user);
+
+    res.status(201).json({
+        user: {
+            id: user._id,
+            role: user.role,
+            roles: user.roles,
+            username: user.username,
+        },
+        ...tokens
+    });
+});
+
+const registerRole = asyncHandler(async (req, res) => {
+    const { role } = req.body;
+
+    const roleModels = {
+        freelancer: Freelancer,
+        employer: Employer,
+        supervisor: Supervisor,
+    };
+
+    const Model = roleModels[role];
+
+    if (!Model) {
+        throw new ApiError(400, "Invalid role");
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user || user.status !== "active") {
+        throw new ApiError(403, "User not found or user is inactive");
+    }
+
+    const alreadyHasRole = user.roles.includes(role);
+
+    // Supervisor is a privileged role.
+    // The user must already have supervisor in their roles.
+    if (role === "supervisor" && !alreadyHasRole) {
+        throw new ApiError(
+            403,
+            "You are not authorized to register as a supervisor"
+        );
+    }
+
+    // The requested role becomes the active/latest role
+    user.role = role;
+
+    // New role
+    if (!alreadyHasRole) {
+        user.roles.push(role);
+
+        let uniqueSetter;
+
+        switch (role) {
+            case "employer":
+                uniqueSetter = "EM";
+                break;
+
+            case "freelancer":
+                uniqueSetter = "FR";
+                break;
+
+            default:
+                throw new ApiError(400, "Invalid role");
+        }
+
+        user.uniqueId = `${uniqueSetter}${Date.now()}`;
+        
+        if (role === "freelancer"){
+            let authDepartment = await Department.findOne({name : "احراز هویت"});
+            if(!authDepartment){
+                authDepartment = await Department.create({name : "احراز هویت"});
+            }
+            if (!authDepartment.freelancers.some(id => id.equals(user._id))) {
+                authDepartment.freelancers.push(user._id);
+                await authDepartment.save();
+            }
+            
+            const ticket = await Ticket.create({
+                title : "تیکت احراز هویت فریلنسر" + user.username,
+                description : "این تیکت صرفا برای احراز هویت این فریلنسر توسط ناظر این دپارتمان صورت میگیرد",
+                userId : user._id,
+                department : authDepartment._id,
+                priority : "متوسط",
+                freelancer : user._id,
+            });
+            const createTicketMessage = await TicketMessage.create({
+                ticket : ticket._id,
+                senderRole : "freelancer",
+                sender : user._id,
+                text : "برای احراز هویت ابتدا خود را معرفی و در شاخه تخصصی که کار میکنید را بنویسید . سپس منتظر بمانید تا ناظر مربوطه به شما مراجعه و فرآیند احراز هویت تکمیل شود"
+            })
+            
+            console.log(`${user.username} has been requested for verification!`);
+            
+        }
+
+
+        await user.save();
+
+        await Model.create({
+            userId: user._id,
+        });
+    } 
+    
+    // Existing role
+    else {
+        // If switching to supervisor, make sure its profile exists.
+        if (role === "supervisor") {
+            const existingSupervisor = await Supervisor.findOne({
+                userId: user._id,
+            });
+
+            if (!existingSupervisor) {
+                await Supervisor.create({
+                    userId: user._id,
+                });
+            }
+
+            // Generate supervisor ID when activating supervisor
+            user.uniqueId = `SU${Date.now()}`;
+        }
+
+        await user.save();
+    }
+
+    // New token contains the new active role
+    const tokens = signTokens(user);
+    let freelancer = null;
+    if ( role === "freelancer"){
+      freelancer = await Freelancer.findOne({userId : user._id}).select("level");
+      if(!freelancer){
+        throw new ApiError(404 , "freelancer not found to catch its data!");
+      }
+    }
+    res.status(201).json({
+        message: alreadyHasRole
+            ? `Role '${role}' selected successfully`
+            : `Role '${role}' registered successfully`,
+
+        user: {
+            id: user._id,
+            role: user.role,
+            roles: user.roles,
+            uniqueId: user.uniqueId,
+            ...(freelancer?.level
+            ? { level: freelancer.level }
+            : {}),
+        },
+
+        ...tokens,
+    });
+});
+
+
+const login = asyncHandler(async (req, res) => {
+  const { username, password } = req.body;
+  const trimmed = username?.trim();
+  const user = await User.findOne({
+    $or: [
+      { username: trimmed },
+      { email: trimmed?.toLowerCase() },
+      { phone: trimmed },
+    ],
+  }).select("+password");
+
+  // ASVS V2.2.1 - one generic error for both "no such user" and "wrong password"
+  if (!user || !(await bcrypt.compare(password, user.password))) {
+    throw new ApiError(401, "نام کاربری یا رمز عبور نامعتبر است");
+  }
+  if (user.status !== "active") {
+    throw new ApiError(403, "حساب کاربری غیرفعال است");
+  }
+  let freelancer = null;
+
+  if (user.role === "freelancer") {
+    freelancer = await Freelancer.findOne({
+      userId: user._id,
+    }).select("level");
+  }
+
+  const tokens = signTokens(user);
+  res.json({
+    user: {
+      id: user._id,
+      role: user.role,
+      roles: user.roles,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      ...(freelancer?.level
+        ? { level: freelancer.level }
+        : {}),
+    },
+    ...tokens,
+  });
+});
+
+const refresh = asyncHandler(async (req, res) => {
+  const { refreshToken } = req.body;
+  let payload;
+  try {
+    payload = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+  } catch (err) {
+    throw new ApiError(401, "Invalid refresh token");
+  }
+  const user = await User.findById(payload.sub);
+  if (!user) throw new ApiError(401, "User not found");
+  res.json(signTokens(user));
+});
+
+module.exports = { register, login, refresh, registerRole , getUsers , getUserDirectory  , getDeptUserDirectory , getUserProfile , updateUser , getMyProfile };

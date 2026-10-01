@@ -190,6 +190,7 @@ const assignFreelancer = asyncHandler(async (req, res) => {
     statusText: "active",
     approvalStatus: "under review",
     settlementStatus: "Awaiting",
+    supervisorId : project.supervisorId
   });
   // ------------------------------------------
   // UPDATE PROJECT
@@ -663,6 +664,7 @@ const createProject = asyncHandler(async (req, res) => {
     await Task.create({
       projectId: superProject._id,
       employerId: superProject.employerId,
+      supervisorId : superProject.supervisorId, 
       column: "deposited",
       title: superProject.title,
       department: await resolveDepartmentName(superProject.departmentId),
@@ -781,6 +783,7 @@ const createProject = asyncHandler(async (req, res) => {
   await Task.create({
     projectId: project._id,
     employerId: project.employerId,
+    supervisorId : project.supervisorId, 
     column: "deposited",
     title: project.title,
     department: await resolveDepartmentName(project.departmentId),
@@ -1285,10 +1288,7 @@ const updateProject = asyncHandler(async (req, res) => {
     throw new ApiError(403, "Cannot edit a completed project");
   }
 
-  // Prevent updating to "completed" stage
-  if (req.body.stage === "completed") {
-    throw new ApiError(403, "Cannot set project to completed status");
-  }
+  
   const project = await Project.findByIdAndUpdate(
     req.params.id,
     {
@@ -1335,7 +1335,7 @@ const editRequestByEmployer = asyncHandler(async (req, res) => {
   }
 
   // Project is currently being worked on
-  if (project.stage === "active") {
+  if (project.stage === "active" && project.status !== "تایید خروجی کارفرما") {
     throw new ApiError(403, "Project is still in progress!");
   }
 
@@ -1472,32 +1472,59 @@ const confirmResultResult = asyncHandler(async (req, res) => {
       employerId: project.employerId,
     });
 
-    if (!task) {
-      throw new ApiError(404, "Task not found!");
+    if (task) {
+      const now = new Date();
+  
+      task.employerApproval = "approved";
+      task.column = "completed";
+      task.lastUpdate = now;
+      task.employerApprovalDate = now;
+      task.statusText = "completed";
+  
+      if (task.startDate) {
+        const durationMs = now - task.startDate;
+        const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
+        task.duration = `${durationDays} days`;
+      }
+  
+      task.settlementStatus =
+        project.budget - project.paidAmount <= 0 ? "Settled" : "Awaiting";
+  
+      await task.save();
     }
 
-    const now = new Date();
-
-    task.employerApproval = "approved";
-    task.column = "completed";
-    task.lastUpdate = now;
-    task.employerApprovalDate = now;
-    task.statusText = "completed";
-
-    if (task.startDate) {
-      const durationMs = now - task.startDate;
-      const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
-      task.duration = `${durationDays} days`;
-    }
-
-    task.settlementStatus =
-      project.budget - project.paidAmount <= 0 ? "Settled" : "Awaiting";
-
-    await task.save();
 
     project.stage = "completed";
     project.status = "خاتمه یافته";
+    project.progress = 100;
+    // ------------------------------------------
+    // UPDATE SUPER PROJECT PROGRESS
+    // ------------------------------------------
 
+    const superProject = await Project.findOne({
+      subProjectsIds: project._id,
+    });
+
+    if (superProject) {
+      console.log("superProject founded!")
+      const subProjects = await Project.find({
+        _id: { $in: superProject.subProjectsIds },
+      });
+
+      let superProgress = 0;
+
+      subProjects.forEach((subProject) => {
+        superProgress += subProject.progress || 0;
+      });
+      
+      superProject.progress =
+        subProjects.length > 0
+          ? superProgress / subProjects.length
+          : 0;
+      console.log("superProject founded!" , superProject.progress)
+      await superProject.save();
+    }
+    // ------
     await Notifications.create({
       userId: project.employerId,
       type: "project",
@@ -1526,7 +1553,7 @@ const confirmResultResult = asyncHandler(async (req, res) => {
   else if (req.user.role === "admin") {
     project.stage = "completed";
     project.status = "خاتمه یافته";
-
+    project.progress = 100;
     for (const freeid of project.freelancersId) {
       const freeTask = await Task.findOne({
         projectId: project._id,
@@ -1564,28 +1591,27 @@ const confirmResultResult = asyncHandler(async (req, res) => {
       employerId: project.employerId,
     });
 
-    if (!task) {
-      throw new ApiError(404, "Task not found!");
+    if (task) {
+      const now = new Date();
+  
+      task.employerApproval = "approved";
+      task.column = "completed";
+      task.lastUpdate = now;
+      task.employerApprovalDate = now;
+      task.statusText = "completed";
+  
+      if (task.startDate) {
+        const durationMs = now - task.startDate;
+        const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
+        task.duration = `${durationDays} days`;
+      }
+  
+      task.settlementStatus =
+        project.budget - project.paidAmount <= 0 ? "Settled" : "Awaiting";
+  
+      await task.save();
     }
 
-    const now = new Date();
-
-    task.employerApproval = "approved";
-    task.column = "completed";
-    task.lastUpdate = now;
-    task.employerApprovalDate = now;
-    task.statusText = "completed";
-
-    if (task.startDate) {
-      const durationMs = now - task.startDate;
-      const durationDays = Math.ceil(durationMs / (1000 * 60 * 60 * 24));
-      task.duration = `${durationDays} days`;
-    }
-
-    task.settlementStatus =
-      project.budget - project.paidAmount <= 0 ? "Settled" : "Awaiting";
-
-    await task.save();
 
     await Notifications.create({
       userId: project.employerId,

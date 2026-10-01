@@ -6,6 +6,7 @@ const taskSchema = new mongoose.Schema(
   {
     projectId: { type: mongoose.Schema.Types.ObjectId, ref: "Project", required: true },
     freelancerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    supervisorId : { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     employerId : { type: mongoose.Schema.Types.ObjectId, ref: "User"},
     column: {
       type: String,

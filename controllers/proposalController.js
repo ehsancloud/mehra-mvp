@@ -447,6 +447,7 @@ const reviewProposal = asyncHandler(async (req, res) => {
             await Task.create({
                 projectId : project._id,
                 freelancerId : proposal.freelancerId,
+                supervisorId : project.supervisorId, 
                 column : "deposited",
                 title : project.title,
                 department : await resolveDepartmentName(project.departmentId),
@@ -457,6 +458,7 @@ const reviewProposal = asyncHandler(async (req, res) => {
                 approvalStatus : "under review",
                 settlementStatus : "Awaiting"
                     });
+
 
             project.ticketIds.push({ticketId : newTicket._id , userId : proposal.freelancerId});
             

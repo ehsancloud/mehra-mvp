@@ -273,6 +273,8 @@ const getUserProfile = asyncHandler(async (req, res) => {
   let rateScore = 0;
   let availableForProposals = true;
 
+  let departments = [];
+
   if (user.role === "freelancer") {
     const freelancerProfile = await Freelancer.findOne({ userId: user._id })
       .select("level rateScore availableForProposals")
@@ -282,6 +284,14 @@ const getUserProfile = asyncHandler(async (req, res) => {
     availableForProposals = freelancerProfile?.availableForProposals ? freelancerProfile.availableForProposals: false;
     resolvedSkills = user.skills;
   }
+  if(user.role === "supervisor"){
+    const supervisorProfile = await Supervisor.findOne({userId : user._id})
+      .select("departments")
+      .lean();
+    departments = Array.isArray(supervisorProfile?.departments)
+    ? supervisorProfile.departments
+    : [];
+  }
 
   const userProfile = {
     ...user,
@@ -289,7 +299,7 @@ const getUserProfile = asyncHandler(async (req, res) => {
     skills: resolvedSkills,
     rateScore : rateScore,
     availableForProposals : availableForProposals,
-
+    departments : departments,
     projects: projects.map((project, index) => ({
       id: project._id,
       title: project.title,
@@ -327,6 +337,9 @@ const FREELANCER_UPDATABLE_FIELDS = [
   "level",
   "availableForProposals",
 ];
+const SUPERVISOR_UPDATEABLE_FIELDS = [
+  "departments"
+]
 
 const updateUser = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -355,9 +368,29 @@ const updateUser = asyncHandler(async (req, res) => {
       }
     );
   }
+  if (user.role === "supervisor"){
+    const supervisorPatch = {};
+    for (const field of SUPERVISOR_UPDATEABLE_FIELDS) {
+      if (req.body[field] !== undefined) {
+        supervisorPatch[field] = req.body[field];
+      }
+    }
+
+    await Supervisor.findOneAndUpdate(
+      { userId: id },
+      { $set: supervisorPatch },
+      {
+        new: true,
+        runValidators: true,
+      }
+    );
+
+  }
 
   const userPatch = {};
-
+  if(req.user.role === "admin"){
+    USER_UPDATABLE_FIELDS.push("roles")
+  }
   for (const field of USER_UPDATABLE_FIELDS) {
     if (req.body[field] !== undefined) {
       userPatch[field] = req.body[field];
@@ -380,7 +413,7 @@ const updateUser = asyncHandler(async (req, res) => {
   });
 });
 
-// god help me!
+
 const getMyProfile = asyncHandler(async (req, res) => {
   let moreData;
 
@@ -480,6 +513,7 @@ const register = asyncHandler(async (req, res) => {
         user: {
             id: user._id,
             role: user.role,
+            roles: user.roles,
             username: user.username,
         },
         ...tokens
@@ -660,6 +694,7 @@ const login = asyncHandler(async (req, res) => {
     user: {
       id: user._id,
       role: user.role,
+      roles: user.roles,
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,

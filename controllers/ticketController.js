@@ -123,6 +123,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
     await Task.create({
       projectId : project._id,
       employerId : project.employerId,
+      supervisorId : project.supervisorId, 
       column : "deposited",
       title : project.title,
       department : await resolveDepartmentName(project.departmentId),
@@ -246,6 +247,8 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
         : {})
    
     });
+    
+        
     await FinanceProject.create({
         projectId : newSubProject._id,
         title : newSubProject.title,
@@ -308,6 +311,7 @@ const convertTicketToProject = asyncHandler(async (req, res) => {
   await Task.create({
     projectId : superProject._id,
     employerId : superProject.employerId,
+    supervisorId : superProject.supervisorId, 
     column : "deposited",
     title : superProject.title,
     department : await resolveDepartmentName(superProject.departmentId),

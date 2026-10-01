@@ -6,11 +6,11 @@ const Project = require("../models/Project");
 const createTask = asyncHandler(async (req , res)=>{
     const {
         projectId, freelancerId, employerId, column, title, department,
-        startDate, duration, relatedTicketId,
+        startDate, duration, relatedTicketId,supervisorId
     } = req.body;
     const task = await Task.create({
         projectId, freelancerId, employerId, column, title, department,
-        startDate, duration, relatedTicketId,
+        startDate, duration, relatedTicketId,supervisorId
     });
     res.status(201).json(task);
 });
@@ -53,7 +53,9 @@ const getTaskBoard = asyncHandler(async (req, res) => {
     } else if (employerId && req.user.role !== "freelancer") {
         filter.employerId = employerId;
     }
-
+    if (req.user.role === "supervisor"){
+        filter.supervisorId = req.user._id;
+    }
     const tasks = await Task.find(filter);
 
     const toCardShape = (task) => ({
@@ -95,20 +97,18 @@ const getEmployerTaskReports = asyncHandler(async (req, res) => {
     }
 
     const filter = {};
-
+    console.log("employerId" , employerId)
     if (employerId) {
 
-        const projects = await Project.find({
-            employerId
-        }).select("_id");
+        // const projects = await Project.find({
+        //     employerId
+        // }).select("_id");
 
-        const projectIds = projects.map(
-            project => project._id
-        );
+        // const projectIds = projects.map(
+        //     project => project._id
+        // );
 
-        filter.projectId = {
-            $in: projectIds
-        };
+        filter.employerId = employerId;
     }
 
     const tasks = await Task.find(filter);

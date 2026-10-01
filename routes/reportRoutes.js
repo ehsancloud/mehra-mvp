@@ -1,7 +1,7 @@
-const router = require("express").Router();
-const { protect, authorize } = require("../middlewares/auth");
-const { previewReport } = require("../controllers/reportController");
+const express = require("express");
+const router = express.Router();
+const { generateReportPdf } = require("../controllers/reportController");
 
-router.post("/preview", protect, authorize("admin"), previewReport);
+router.post("/generate-pdf", generateReportPdf);
 
 module.exports = router;

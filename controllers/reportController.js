@@ -3,6 +3,57 @@ const ApiError = require("../utils/ApiError");
 const Project = require("../models/Project");
 const jalaali = require("jalaali-js");
 
+const puppeteer = require("puppeteer");
+const ejs = require("ejs");
+const path = require("path");
+
+exports.generateReportPdf = asyncHandler(async (req, res) => {
+    const { reportType, projectStatus, paymentStatus, startDate, endDate } = req.body;
+
+    let query = {};
+    if (projectStatus && projectStatus !== "همه وضعیت ها") {
+        query.status = projectStatus;
+    }
+
+    const projects = [
+        { title: "پوستر فراخوان همکاری", colleagueName: "مصطفی رسولی", date: "۱۴۰۵/۰۲/۱۱", status: "در انتظار", amount: 900000 },
+        { title: "پوستر دوره روش تحقیق", colleagueName: "مصطفی رسولی", date: "۱۴۰۵/۰۲/۱۶", status: "در انتظار", amount: 900000 },
+    ];
+
+    const totalAmount = projects.reduce((sum, p) => sum + p.amount, 0);
+
+    const templatePath = path.join(__dirname, "../views/reportTemplate.ejs");
+    const html = await ejs.renderFile(templatePath, {
+        reportTitle: reportType || "لیست پروژه‌ها",
+        startDate: startDate || "ابتدای دوره",
+        endDate: endDate || "تاکنون",
+        currentDate: new Date().toLocaleDateString('fa-IR'),
+        projects,
+        totalAmount
+    });
+
+    const browser = await puppeteer.launch({ headless: "new", args: ['--no-sandbox'] });
+    const page = await browser.newPage();
+    await page.setContent(html, { waitUntil: "networkidle0" });
+    
+    const pdfBuffer = await page.pdf({ 
+        format: "A4", 
+        printBackground: true,
+        margin: { top: "20px", bottom: "20px", left: "20px", right: "20px" }
+    });
+    
+    await browser.close();
+
+    res.set({
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'attachment; filename="report.pdf"',
+        "Content-Length": pdfBuffer.length
+    });
+    
+    res.end(pdfBuffer);
+});
+
+
 const parseJalaliToGregorian = (jalaliDateStr) => {
   if (!jalaliDateStr) return null;
   const parts = jalaliDateStr.split("/");

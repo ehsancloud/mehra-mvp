@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>گزارش سیستمی</title>
+    <style>
+        @font-face {
+            font-family: 'Pinar';
+            /* مسیر فونت رو میتونی به یک لینک CDN یا Base64 تغییر بدی تا حتما لود بشه */
+            src: url('https://your-domain.com/fonts/Pinar-Regular.woff2') format('woff2');
+        }
+        body {
+            font-family: 'Pinar', Tahoma, sans-serif;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid #000;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+            font-size: 12px;
+        }
+        th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+        .total {
+            margin-top: 20px;
+            text-align: left;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h2>گزارش سیستمی: <%= reportTitle %></h2>
+            <p>بازه زمانی: <%= startDate %> تا <%= endDate %></p>
+        </div>
+        <div>
+            <p>تاریخ گزارش: <%= currentDate %></p>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>عنوان پروژه</th>
+                <th>همکار</th>
+                <th>تاریخ</th>
+                <th>وضعیت</th>
+                <th>مبلغ (تومان)</th>
+            </tr>
+        </thead>
+        <tbody>
+            <% projects.forEach(function(project, index) { %>
+                <tr>
+                    <td><%= index + 1 %></td>
+                    <td><%= project.title %></td>
+                    <td><%= project.colleagueName %></td>
+                    <td><%= project.date %></td>
+                    <td><%= project.status %></td>
+                    <td><%= project.amount.toLocaleString('fa-IR') %></td>
+                </tr>
+            <% }); %>
+        </tbody>
+    </table>
+
+    <div class="total">
+        <p>جمع کل: <%= totalAmount.toLocaleString('fa-IR') %> تومان</p>
+    </div>
+</body>
+</html>

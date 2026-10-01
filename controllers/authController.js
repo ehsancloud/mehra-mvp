@@ -380,7 +380,7 @@ const updateUser = asyncHandler(async (req, res) => {
   });
 });
 
-
+// god help me!
 const getMyProfile = asyncHandler(async (req, res) => {
   let moreData;
 

@@ -53,7 +53,7 @@ const LoginPage = () => {
           <div className="relative w-full">
             <fieldset className="border border-black rounded-[5px] px-3 h-[48px] flex items-center bg-white shadow-[0_2px_0_0_#000000]">
               <legend className="pr-1 pl-1 text-[11px] text-gray-500 font-medium text-right">
-                نام کاربری / شماره همراه / ایمیل
+                نام کاربری
               </legend>
               <input
                 type="text"

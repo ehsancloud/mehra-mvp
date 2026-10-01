@@ -5,6 +5,7 @@ import WeeklyReportsWidget from "../components/WeeklyReportsWidget";
 import EmployerWalletWidget from "../components/EmployerWalletWidget";
 import EmployerReportsKanban from "../components/EmployerReportsKanban";
 import { useAuthStore } from "../store/authStore";
+import TaskManager from "../components/TaskManager";
 const SupervisorDashboard = () => {
   const { user: currentSupervisor } = useAuthStore();
   return (
@@ -31,9 +32,11 @@ const SupervisorDashboard = () => {
               </div>
             </div>
 
+            {/* Row 2: kanban task manager */}
             <div className="w-full">
-              <EmployerReportsKanban />
+              <TaskManager />
             </div>
+            
           </div>
 
           <div className="shrink-0">

@@ -2,6 +2,7 @@ import React from "react";
 import { useTicket } from "../context/TicketContext";
 import { FaMoneyBillWave, FaBuilding, FaCalendarAlt } from "react-icons/fa";
 import { getProjectStatusStyle } from "../utils/projectStatus";
+import { useAuthStore } from "../store/authStore";
 
 const formatPersianPrice = (price) => {
   if (price === 0) return "۰";
@@ -30,7 +31,7 @@ const ProjectCard = ({
   onDeclareReadiness,
 }) => {
   const { openChat } = useTicket();
-
+  const { user: currentUser } = useAuthStore();
   const {
     id,
     title,
@@ -47,6 +48,16 @@ const ProjectCard = ({
     applicationStatus,
     ticketId,
   } = project;
+  const userId = currentUser?.id || currentUser?._id;
+
+  const userTicket = project.ticketIds?.find((item) => {
+    const ticketUserId = item.userId?._id || item.userId;
+
+    return String(ticketUserId) === String(userId);
+  });
+
+  const userTicketId = userTicket?.ticketId?._id || userTicket?.ticketId;
+
 
   const isOpenTab = currentTab === "open";
   const isActiveTab = currentTab === "active";
@@ -240,7 +251,14 @@ const ProjectCard = ({
               </button>
               <button
                 type="button"
-                onClick={() => openChat(ticketId || id, title)}
+                onClick={() => {
+                  if (!userTicketId) {
+                    console.error("No ticket found for current user:", userId);
+                    return;
+                  }
+
+                  openChat(userTicketId, title);
+                }}
                 className="flex-1 h-[36px] border border-black rounded text-[13px] font-medium bg-white text-black cursor-pointer shadow-[0_2px_0_0_#000000] active:translate-y-[2px]"
               >
                 تیکت پروژه

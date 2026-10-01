@@ -14,7 +14,7 @@ const formatPrice = (price) => {
 // project via SuperProjectDetailsModal).
 const ActiveProjectDetailsModal = ({ isOpen, onClose, projectData }) => {
   const { openChat } = useTicket();
-
+  
   // Stacked popup state for the second-layer modals opened from here.
   const [activeStep, setActiveStep] = useState(null); // 'review' | 'edit' | 'terminate'
   const [selectedFreelancer, setSelectedFreelancer] = useState(null);

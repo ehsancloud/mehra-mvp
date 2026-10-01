@@ -1,19 +1,35 @@
+
 import React, { useState } from "react";
+
 import { editProjectPrice } from "../data/api";
 
 // Opens on top of the ticket chat drawer (supervisor/admin only), so its
-// z-index must stay above the chat drawer's (z-[100]/z-[98] overlay) -
+// z-index must stay above the chat drawer's (z-[100]/z-[98]) overlay.
 // otherwise this popup would render invisibly behind the open chat.
+
 const EditPriceModal = ({ isOpen, onClose, projectId }) => {
   const [price, setPrice] = useState("");
+  const [freelancerTarget, setFreelancerTarget] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
     if (!price.trim()) return;
+
+    if (!freelancerTarget || Number(freelancerTarget) < 1) {
+      alert("لطفاً شماره فریلنسر مورد نظر را وارد کنید.");
+      return;
+    }
+
     setIsSaving(true);
-    const result = await editProjectPrice({ projectId, newPrice: price });
+
+    const result = await editProjectPrice({
+      projectId,
+      newPrice: price,
+      freelancerIdsTarget: Number(freelancerTarget) - 1,
+    });
+
     setIsSaving(false);
 
     if (!result.ok) {
@@ -21,8 +37,12 @@ const EditPriceModal = ({ isOpen, onClose, projectId }) => {
       return;
     }
 
-    alert(`مبلغ جدید پروژه فریلنسر (${price} تومان) ثبت شد.`);
+    alert(
+      `مبلغ جدید پروژه فریلنسر (${price} تومان) برای فریلنسر شماره ${freelancerTarget} ثبت شد.`
+    );
+
     setPrice("");
+    setFreelancerTarget("");
     onClose();
   };
 
@@ -41,10 +61,28 @@ const EditPriceModal = ({ isOpen, onClose, projectId }) => {
           ویرایش هزینه پروژه فریلنسر
         </h4>
 
+        {/* Freelancer target */}
+        <div className="relative w-full mt-1 text-right">
+          <label className="absolute -top-[9px] right-3 bg-white px-1 text-[10px] text-gray-500 font-medium">
+            چندمین فریلنسر مد نظرتونه؟
+          </label>
+
+          <input
+            type="number"
+            min="1"
+            placeholder="مثلاً 2"
+            value={freelancerTarget}
+            onChange={(e) => setFreelancerTarget(e.target.value)}
+            className="w-full h-[38px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
+          />
+        </div>
+
+        {/* Price */}
         <div className="relative w-full mt-1 text-right">
           <label className="absolute -top-[9px] right-3 bg-white px-1 text-[10px] text-gray-500 font-medium">
             مبلغ جدید (تومان)
           </label>
+
           <input
             type="text"
             placeholder="مثلاً 12,000,000"
@@ -62,10 +100,16 @@ const EditPriceModal = ({ isOpen, onClose, projectId }) => {
           >
             لغو
           </button>
+
           <button
             type="button"
             onClick={handleSave}
-            disabled={isSaving || !price.trim()}
+            disabled={
+              isSaving ||
+              !price.trim() ||
+              !freelancerTarget ||
+              Number(freelancerTarget) < 1
+            }
             className="flex-1 h-[32px] border border-black bg-[#1c1c1e] text-white text-[11px] font-bold rounded-[4px] disabled:opacity-60"
           >
             {isSaving ? "در حال ثبت..." : "ثبت قیمت"}

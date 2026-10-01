@@ -93,7 +93,19 @@ function mapProject(p) {
     level: p.level || "c",
     priority: p.priority || "متوسط",
     status: p.status || "در انتظار بررسی",
-    employerStatus: p.stage === "active" ? "در حال انجام" : p.stage === "completed" ? "خاتمه یافته" : "در انتظار شروع",
+
+    employerStatus:
+  p.status === "در حال بررسی" || p.status === "در حال انجام"
+    ? "در حال انجام"
+    : p.status === "درخواست اصلاحیه"
+    ? "درخواست اصلاحیه"
+    : p.status === "تایید خروجی کارفرما"
+    ? "در انتظار تایید خروجی توسط شما"
+    : p.status === "خاتمه یافته"
+    ? "خاتمه یافته"
+    : p.status === "پیشنهاد شده"
+    ? "پیشنهاد شده"
+    : "در انتظار شروع",
     stage: p.stage || "open",
     ticketId: p.ticketIds?.[0]?.ticketId?._id || p.ticketIds?.[0]?.ticketId || null,
     ticketIds: p.ticketIds || [],
@@ -222,7 +234,7 @@ export async function register(formData) {
   }
 }
 
-export async function completeRegistration({ formData, role }) {
+export async function completeRegistration({ role }) {
   try {
     const res = await apiFetch("/auth/register-role", {
       method: "POST",
@@ -556,10 +568,10 @@ export async function addProjectPayment({ projectId, title, amount }) {
   }
 }
 
-export async function editProjectPrice({ projectId, newPrice }) {
+export async function editProjectPrice({ projectId, newPrice , freelancerIdsTarget}) {
   try {
     const projRes = await apiFetch(`/projects/${projectId}`);
-    const freelancerId = projRes.result?.freelancersId?.[0]?._id; 
+    const freelancerId = projRes.result?.freelancersId?.[freelancerIdsTarget]?._id; 
     
     await apiFetch(`/projects/${projectId}/price`, {
       method: "PUT",

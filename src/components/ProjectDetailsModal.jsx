@@ -9,6 +9,7 @@ import {
 import { useTicket } from "../context/TicketContext";
 import { getProjectStatusStyle } from "../utils/projectStatus";
 import { declareReadiness, createProposal } from "../data/api";
+import { useAuthStore } from "../store/authStore";
 
 const formatPrice = (price) => {
   return price ? price.toLocaleString("fa-IR").replace(/٬/g, "،") : "۰";
@@ -31,7 +32,9 @@ const ProjectDetailsModal = ({
   onDeclareReadiness,
 }) => {
   const { openChat } = useTicket();
+  const { user: currentUser } = useAuthStore();
   
+
   // استیت‌های مورد نیاز برای ارسال پروپوزال
   const [proposedCost, setProposedCost] = useState("");
   const [note, setNote] = useState("");
@@ -47,6 +50,15 @@ const ProjectDetailsModal = ({
   }, [isOpen, project]);
 
   if (!isOpen || !project) return null;
+  const userId = currentUser?.id || currentUser?._id;
+
+  const userTicket = project.ticketIds?.find((item) => {
+    const ticketUserId = item.userId?._id || item.userId;
+
+    return String(ticketUserId) === String(userId);
+  });
+
+  const userTicketId = userTicket?.ticketId?._id || userTicket?.ticketId;
 
   const {
     id,
@@ -88,36 +100,36 @@ const ProjectDetailsModal = ({
 
     // اگر فریلنسر قیمت یا یادداشت جدیدی وارد کرده بود:
     if (proposedCost || note) {
-       const result = await createProposal(id, {
-           proposedCost: Number(proposedCost) || budget, // اگر خالی بود همون بودجه اصلی ثبت بشه
-           note: note || "پیشنهاد جدید برای این پروژه"
-       });
-       
-       setIsSubmitting(false);
-       
-       if (result.ok) {
-           alert("پیشنهاد شما با موفقیت ثبت شد.");
-           if (onDeclareReadiness) {
-               onDeclareReadiness({ ...project, applicationStatus: "applied" });
-           } else {
-             onClose();
-           }
-       } else {
-           alert(result.message || "خطا در ثبت پیشنهاد.");
-       }
-    } else {
-       // اگر فیلدها خالی بود یعنی فقط اعلام آمادگی ساده می‌کند:
-       const result = await declareReadiness({ projectId: id });
-       setIsSubmitting(false);
+      const result = await createProposal(id, {
+        proposedCost: Number(proposedCost) || budget, // اگر خالی بود همون بودجه اصلی ثبت بشه
+        note: note || "پیشنهاد جدید برای این پروژه",
+      });
 
-       if (result.ok) {
-          if(onDeclareReadiness) {
-             onDeclareReadiness({ ...project, applicationStatus: "applied" });
-          }
+      setIsSubmitting(false);
+
+      if (result.ok) {
+        alert("پیشنهاد شما با موفقیت ثبت شد.");
+        if (onDeclareReadiness) {
+          onDeclareReadiness({ ...project, applicationStatus: "applied" });
+        } else {
           onClose();
-       } else {
-          alert(result.message || "خطا در اعلام آمادگی.");
-       }
+        }
+      } else {
+        alert(result.message || "خطا در ثبت پیشنهاد.");
+      }
+    } else {
+      // اگر فیلدها خالی بود یعنی فقط اعلام آمادگی ساده می‌کند:
+      const result = await declareReadiness({ projectId: id });
+      setIsSubmitting(false);
+
+      if (result.ok) {
+        if (onDeclareReadiness) {
+          onDeclareReadiness({ ...project, applicationStatus: "applied" });
+        }
+        onClose();
+      } else {
+        alert(result.message || "خطا در اعلام آمادگی.");
+      }
     }
   };
 
@@ -208,7 +220,11 @@ const ProjectDetailsModal = ({
               {briefFileUrl && (
                 <div className="mt-2 flex items-center justify-start">
                   <a
-                    href={briefFileUrl.startsWith("http") ? briefFileUrl : `http://localhost:3000${briefFileUrl.startsWith("/") ? "" : "/"}${briefFileUrl}`}
+                    href={
+                      briefFileUrl.startsWith("http")
+                        ? briefFileUrl
+                        : `http://localhost:3000${briefFileUrl.startsWith("/") ? "" : "/"}${briefFileUrl}`
+                    }
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#f0f9ff] text-[#0369a1] border border-[#bae6fd] rounded-[5px] text-[11px] font-bold hover:bg-[#e0f2fe] transition-colors cursor-pointer"
@@ -249,26 +265,30 @@ const ProjectDetailsModal = ({
             {/* ورودی قیمت و یادداشت برای ارسال پروپوزال (فقط در وضعیت Open و در صورتی که قبلا اعمال نکرده باشد) */}
             {stage === "open" && !readinessButton.disabled && (
               <div className="flex flex-col gap-3 w-full border border-gray-200 rounded-[5px] p-3 bg-gray-50">
-                  <div className="text-right">
-                      <label className="text-[10px] text-gray-500 block mb-1">پیشنهاد قیمت (تومان) - اختیاری</label>
-                      <input 
-                          type="number" 
-                          value={proposedCost}
-                          onChange={(e) => setProposedCost(e.target.value)}
-                          placeholder={budget.toString()}
-                          className="w-full border border-gray-300 rounded px-2 py-1.5 text-[11px] font-mono text-left dir-ltr focus:border-black focus:outline-none"
-                      />
-                  </div>
-                  <div className="text-right">
-                      <label className="text-[10px] text-gray-500 block mb-1">یادداشت برای کارفرما - اختیاری</label>
-                      <textarea 
-                          value={note}
-                          onChange={(e) => setNote(e.target.value)}
-                          rows="2"
-                          placeholder="توضیحات پیشنهاد شما..."
-                          className="w-full border border-gray-300 rounded px-2 py-1.5 text-[11px] focus:border-black focus:outline-none resize-none"
-                      />
-                  </div>
+                <div className="text-right">
+                  <label className="text-[10px] text-gray-500 block mb-1">
+                    پیشنهاد قیمت (تومان) - اختیاری
+                  </label>
+                  <input
+                    type="number"
+                    value={proposedCost}
+                    onChange={(e) => setProposedCost(e.target.value)}
+                    placeholder={budget.toString()}
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-[11px] font-mono text-left dir-ltr focus:border-black focus:outline-none"
+                  />
+                </div>
+                <div className="text-right">
+                  <label className="text-[10px] text-gray-500 block mb-1">
+                    یادداشت برای کارفرما - اختیاری
+                  </label>
+                  <textarea
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                    rows="2"
+                    placeholder="توضیحات پیشنهاد شما..."
+                    className="w-full border border-gray-300 rounded px-2 py-1.5 text-[11px] focus:border-black focus:outline-none resize-none"
+                  />
+                </div>
               </div>
             )}
 
@@ -277,18 +297,31 @@ const ProjectDetailsModal = ({
                 onClick={handleApplyOrProposal}
                 disabled={readinessButton.disabled || isSubmitting}
                 className={`w-full h-[38px] border border-black text-[13px] font-bold rounded-[5px] transition-all 
-                  ${readinessButton.disabled 
-                    ? "bg-gray-100 text-gray-400 opacity-70 cursor-not-allowed border-gray-300" 
-                    : "bg-[#1c1c1e] text-white shadow-[0_3px_0_0_#000000] active:translate-y-[2px] active:shadow-none cursor-pointer hover:bg-black"}`}
+                  ${
+                    readinessButton.disabled
+                      ? "bg-gray-100 text-gray-400 opacity-70 cursor-not-allowed border-gray-300"
+                      : "bg-[#1c1c1e] text-white shadow-[0_3px_0_0_#000000] active:translate-y-[2px] active:shadow-none cursor-pointer hover:bg-black"
+                  }`}
               >
-                {isSubmitting ? "در حال ثبت..." : (proposedCost || note) ? "ارسال پیشنهاد" : readinessButton.label}
+                {isSubmitting
+                  ? "در حال ثبت..."
+                  : proposedCost || note
+                    ? "ارسال پیشنهاد"
+                    : readinessButton.label}
               </button>
             )}
 
             {(stage === "completed" ||
               (stage === "active" && !isSuperProject)) && (
               <button
-                onClick={() => openChat(project.ticketId || id, title)}
+                onClick={() => {
+                  if (!userTicketId) {
+                    console.error("No ticket found for current user:", userId);
+                    return;
+                  }
+
+                  openChat(userTicketId, title);
+                }}
                 className="w-full h-[38px] border border-black bg-white text-black text-[13px] font-bold rounded-[5px] shadow-[0_3px_0_0_#000000] active:translate-y-[2px] active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-1.5 hover:bg-gray-50"
               >
                 <BiMessageSquareDetail className="text-base" />

@@ -1,17 +1,31 @@
 import React, { useState, useEffect } from "react";
+
 import { BiX, BiExport, BiPlus, BiChevronDown } from "react-icons/bi";
+
 import { useNavigate } from "react-router-dom";
-import { getDepartments, getUserProfile, updateUser } from "../data/api";
-import { LEVEL_LABELS, getLevelLabel } from "../utils/projectLevels";
+
+import {
+  getDepartmentNames,
+  getUserProfile,
+  updateUser,
+} from "../data/api";
+
+import { LEVEL_LABELS } from "../utils/projectLevels";
 
 const formatPrice = (price) => {
-  return price ? price.toLocaleString("fa-IR").replace(/٬/g, ",") : "۰";
+  return price
+    ? price.toLocaleString("fa-IR").replace(/٬/g, ",")
+    : "۰";
 };
 
-const ALL_ROLES = ["فریلنسر", "کارفرما", "ناظر", "عادی"];
+const ALL_ROLES = ["freelancer", "employer", "supervisor", "user"];
+
 const FREELANCER_LEVELS = Object.values(LEVEL_LABELS);
+
 const levelLabelToCode = (label) =>
-  Object.keys(LEVEL_LABELS).find((code) => LEVEL_LABELS[code] === label) || "c";
+  Object.keys(LEVEL_LABELS).find(
+    (code) => LEVEL_LABELS[code] === label
+  ) || "c";
 
 const UserProfileModal = ({ isOpen, onClose, user }) => {
   const navigate = useNavigate();
@@ -29,49 +43,89 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
   const [level, setLevel] = useState(LEVEL_LABELS.c);
   const [income, setIncome] = useState(0);
   const [skills, setSkills] = useState([]);
+
   const [roles, setRoles] = useState([]);
+
+  // Supervisor departments
+  const [selectedDepartments, setSelectedDepartments] = useState([]);
 
   const [showLevelDrop, setShowLevelDrop] = useState(false);
   const [showDeptDrop, setShowDeptDrop] = useState(false);
   const [showRoleDrop, setShowRoleDrop] = useState(false);
+  const [showDepartmentDrop, setShowDepartmentDrop] = useState(false);
+
   const [isSaving, setIsSaving] = useState(false);
 
-  const isFreelancer = user?.role === "freelancer" || roles.includes("فریلنسر");
+  const isFreelancer =
+    user?.role === "freelancer" ||
+    roles.includes("freelancer") ||
+    roles.includes("فریلنسر");
 
+  const isSupervisor =
+    user?.role === "supervisor" ||
+    roles.includes("supervisor") ||
+    roles.includes("ناظر");
+
+  // Get all department names
   useEffect(() => {
     if (!isOpen) return;
-    getDepartments().then((list) => setDepartments(list.map((d) => d.name)));
+
+    getDepartmentNames().then((list) => {
+      setDepartments(Array.isArray(list) ? list : []);
+    });
   }, [isOpen]);
 
+  // Get complete user profile
   useEffect(() => {
     if (!isOpen || !user) return;
+
     getUserProfile(user._id).then((fullProfile) => {
       const p = fullProfile || user;
+
       setProfile(p);
+
       setFirstName(p.firstName || "");
       setLastName(p.lastName || "");
       setUsername(p.username || "");
       setUniqueId(p.uniqueId || "");
       setEmail(p.email || "");
       setPhone(p.phone || "");
+
       const rawLevel =
         p.level ||
-        (p.freelancer && p.freelancer.level) ||
+        p.freelancer?.level ||
         user.level ||
-        (user.freelancer && user.freelancer.level);
+        user.freelancer?.level;
+
       const code =
         rawLevel === "a" || rawLevel === "b" || rawLevel === "c"
           ? rawLevel
-          : typeof rawLevel === "string" && (rawLevel.includes("A") || rawLevel.includes("۳") || rawLevel === "3")
+          : typeof rawLevel === "string" &&
+            (rawLevel.includes("A") ||
+              rawLevel.includes("۳") ||
+              rawLevel === "3")
           ? "a"
-          : typeof rawLevel === "string" && (rawLevel.includes("B") || rawLevel.includes("۲") || rawLevel === "2")
+          : typeof rawLevel === "string" &&
+            (rawLevel.includes("B") ||
+              rawLevel.includes("۲") ||
+              rawLevel === "2")
           ? "b"
           : "c";
-      console.log(code ,rawLevel)
+
       setLevel(LEVEL_LABELS[code] || LEVEL_LABELS.c);
+
       setIncome(p.income || 0);
       setSkills(p.skills || []);
       setRoles(p.roles || []);
+
+      // Supervisor departments
+      setSelectedDepartments(
+        p.departments ||
+          p.supervisor?.departments ||
+          user.departments ||
+          user.supervisor?.departments ||
+          []
+      );
     });
   }, [isOpen, user]);
 
@@ -85,6 +139,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
     if (!skills.includes(dept)) {
       setSkills([...skills, dept]);
     }
+
     setShowDeptDrop(false);
   };
 
@@ -96,7 +151,25 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
     if (!roles.includes(role)) {
       setRoles([...roles, role]);
     }
+
     setShowRoleDrop(false);
+  };
+
+  // Supervisor department handlers
+  const handleAddSelectedDepartment = (dept) => {
+    if (!selectedDepartments.includes(dept)) {
+      setSelectedDepartments([...selectedDepartments, dept]);
+    }
+
+    setShowDepartmentDrop(false);
+  };
+
+  const handleRemoveSelectedDepartment = (deptToRemove) => {
+    setSelectedDepartments(
+      selectedDepartments.filter(
+        (dept) => dept !== deptToRemove
+      )
+    );
   };
 
   const handleNavigateToProject = (projectId) => {
@@ -106,6 +179,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
 
   const handleSaveChanges = async () => {
     setIsSaving(true);
+
     const result = await updateUser(user._id, {
       firstName,
       lastName,
@@ -113,13 +187,21 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
       email,
       phone,
       roles,
+
       ...(isFreelancer
         ? {
             level: levelLabelToCode(level),
             skills,
           }
         : {}),
+
+      ...(isSupervisor
+        ? {
+            departments: selectedDepartments,
+          }
+        : {}),
     });
+
     setIsSaving(false);
 
     if (!result.ok) {
@@ -136,17 +218,25 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
       className="fixed inset-0 bg-black/50 z-[90] flex items-center justify-center p-4 animate-fadeIn"
       dir="rtl"
     >
-      <div className="absolute inset-0" onClick={onClose} />
+      <div
+        className="absolute inset-0"
+        onClick={onClose}
+      />
 
       <div
         className="w-[520px] bg-white border border-black rounded-[8px] p-6 relative z-10 flex flex-col gap-4 max-h-[92vh] overflow-y-auto scrollbar-none select-none shadow-[0_8px_0_0_#000000]"
         style={{ fontFamily: "Pinar-FD" }}
       >
+        {/* Header */}
         <div className="w-full flex justify-between items-center border-b border-gray-200 pb-3">
           <div className="w-10 h-10 rounded-full bg-[#3b82f6] text-white flex items-center justify-center font-bold text-[18px]">
             {user.initial || "?"}
           </div>
-          <h3 className="text-[20px] font-bold text-black">اطلاعات کاربر</h3>
+
+          <h3 className="text-[20px] font-bold text-black">
+            اطلاعات کاربر
+          </h3>
+
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-black text-2xl cursor-pointer"
@@ -155,14 +245,18 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
           </button>
         </div>
 
+        {/* Personal Information */}
         <div className="flex flex-col gap-3 text-right">
-          <h4 className="text-[14px] font-bold text-black">اطلاعات شخصی</h4>
+          <h4 className="text-[14px] font-bold text-black">
+            اطلاعات شخصی
+          </h4>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-1">
               <label className="text-[11px] text-gray-500 font-medium">
                 نام
               </label>
+
               <input
                 type="text"
                 value={firstName}
@@ -175,6 +269,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
               <label className="text-[11px] text-gray-500 font-medium">
                 نام خانوادگی
               </label>
+
               <input
                 type="text"
                 value={lastName}
@@ -189,6 +284,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
               <label className="text-[11px] text-gray-500 font-medium">
                 نام کاربری
               </label>
+
               <input
                 type="text"
                 value={username}
@@ -201,6 +297,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
               <label className="text-[11px] text-gray-500 font-medium">
                 یونیک اید
               </label>
+
               <input
                 type="text"
                 value={uniqueId}
@@ -215,6 +312,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
               <label className="text-[11px] text-gray-500 font-medium">
                 ایمیل
               </label>
+
               <input
                 type="email"
                 value={email}
@@ -227,6 +325,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
               <label className="text-[11px] text-gray-500 font-medium">
                 شماره همراه
               </label>
+
               <input
                 type="text"
                 value={phone}
@@ -237,15 +336,19 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
           </div>
         </div>
 
+        {/* Freelancer Details */}
         {isFreelancer && (
           <div className="flex flex-col gap-3 text-right">
-            <h4 className="text-[14px] font-bold text-black">جزییات پروفایل</h4>
+            <h4 className="text-[14px] font-bold text-black">
+              جزییات پروفایل
+            </h4>
 
             <div className="grid grid-cols-2 gap-3 items-center">
               <div className="flex flex-col gap-1">
                 <label className="text-[11px] text-gray-500 font-medium">
                   مجموع درآمد
                 </label>
+
                 <input
                   type="text"
                   value={`${formatPrice(income)} تومان`}
@@ -258,11 +361,17 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
                 <label className="text-[11px] text-gray-500 font-medium">
                   سطح
                 </label>
+
                 <div
-                  onClick={() => setShowLevelDrop(!showLevelDrop)}
+                  onClick={() =>
+                    setShowLevelDrop(!showLevelDrop)
+                  }
                   className="w-full h-[38px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-white cursor-pointer font-bold"
                 >
-                  <span className="text-black">{level}</span>
+                  <span className="text-black">
+                    {level}
+                  </span>
+
                   <BiChevronDown className="text-xl text-black shrink-0" />
                 </div>
 
@@ -285,10 +394,12 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
               </div>
             </div>
 
+            {/* Freelancer Departments / Skills */}
             <div className="flex flex-col gap-1 mt-1 relative">
               <label className="text-[11px] text-gray-500 font-medium">
                 دپارتمان
               </label>
+
               <div className="w-full border border-black rounded-[5px] p-2.5 bg-white flex flex-col gap-2 min-h-[60px]">
                 <div className="flex flex-wrap gap-2">
                   {skills.map((skill, index) => (
@@ -297,8 +408,11 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
                       className="bg-[#dbeaff] text-[#1e40af] border border-blue-300 rounded-[4px] px-2.5 py-0.5 text-[11px] font-bold flex items-center gap-1.5"
                     >
                       {skill}
+
                       <BiX
-                        onClick={() => handleRemoveSkill(skill)}
+                        onClick={() =>
+                          handleRemoveSkill(skill)
+                        }
                         className="cursor-pointer text-sm hover:text-red-600"
                       />
                     </span>
@@ -308,7 +422,9 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
                 <div className="relative mt-auto">
                   <button
                     type="button"
-                    onClick={() => setShowDeptDrop(!showDeptDrop)}
+                    onClick={() =>
+                      setShowDeptDrop(!showDeptDrop)
+                    }
                     className="text-[11px] text-gray-400 hover:text-black flex items-center justify-end gap-1 font-medium cursor-pointer mr-auto"
                   >
                     افزودن مهارت <BiPlus />
@@ -319,7 +435,9 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
                       {departments.map((dept) => (
                         <div
                           key={dept}
-                          onClick={() => handleAddDepartment(dept)}
+                          onClick={() =>
+                            handleAddDepartment(dept)
+                          }
                           className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
                         >
                           {dept}
@@ -333,28 +451,121 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
           </div>
         )}
 
+        {/* Supervisor Departments */}
+        {isSupervisor && (
+          <div className="flex flex-col gap-1 text-right relative">
+            <h4 className="text-[14px] font-bold text-black">
+              دپارتمان‌ها
+            </h4>
+
+            <div className="w-full border border-black rounded-[5px] p-2.5 bg-white flex flex-col gap-2 min-h-[60px]">
+              {/* Selected department tags */}
+              <div className="flex flex-wrap gap-2">
+                {selectedDepartments.map((dept, index) => (
+                  <span
+                    key={index}
+                    className="bg-[#dbeaff] text-[#1e40af] border border-blue-300 rounded-[4px] px-2.5 py-0.5 text-[11px] font-bold flex items-center gap-1.5"
+                  >
+                    {dept}
+
+                    <BiX
+                      onClick={() =>
+                        handleRemoveSelectedDepartment(dept)
+                      }
+                      className="cursor-pointer text-sm hover:text-red-600"
+                    />
+                  </span>
+                ))}
+
+                {selectedDepartments.length === 0 && (
+                  <span className="text-[11px] text-gray-400">
+                    هنوز دپارتمانی انتخاب نشده است.
+                  </span>
+                )}
+              </div>
+
+              {/* Add department */}
+              <div className="relative mt-auto">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setShowDepartmentDrop(
+                      !showDepartmentDrop
+                    )
+                  }
+                  className="text-[11px] text-gray-400 hover:text-black flex items-center justify-end gap-1 font-medium cursor-pointer mr-auto"
+                >
+                  افزودن دپارتمان <BiPlus />
+                </button>
+
+                {showDepartmentDrop && (
+                  <div className="absolute bottom-[25px] left-0 w-[200px] bg-white border border-black rounded-[5px] shadow-[0_3px_0_0_#000000] flex flex-col p-1 z-30 max-h-[160px] overflow-y-auto">
+                    {departments
+                      .filter(
+                        (dept) =>
+                          !selectedDepartments.includes(dept)
+                      )
+                      .map((dept) => (
+                        <div
+                          key={dept}
+                          onClick={() =>
+                            handleAddSelectedDepartment(dept)
+                          }
+                          className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
+                        >
+                          {dept}
+                        </div>
+                      ))}
+
+                    {departments.filter(
+                      (dept) =>
+                        !selectedDepartments.includes(dept)
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-[11px] text-gray-400 text-center">
+                        دپارتمان جدیدی برای انتخاب وجود ندارد.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Projects */}
         <div className="flex flex-col gap-2 text-right">
-          <h4 className="text-[14px] font-bold text-black">لیست پروژه ها</h4>
+          <h4 className="text-[14px] font-bold text-black">
+            لیست پروژه ها
+          </h4>
+
           <div className="w-full border border-black rounded-[5px] p-2.5 bg-white flex flex-col gap-2">
             {(profile?.projects || []).map((proj) => (
               <div
                 key={proj.id}
                 className={`w-full h-[36px] rounded-[5px] px-3 flex justify-between items-center border border-gray-300
-                  ${proj.isHighlighted ? "bg-[#dbeaff] border-blue-300" : "bg-[#e5e7eb]"}
+                  ${
+                    proj.isHighlighted
+                      ? "bg-[#dbeaff] border-blue-300"
+                      : "bg-[#e5e7eb]"
+                  }
                 `}
               >
                 <span className="text-[12px] font-bold text-black">
                   {proj.title}
                 </span>
+
                 <button
                   type="button"
-                  onClick={() => handleNavigateToProject(proj.id)}
+                  onClick={() =>
+                    handleNavigateToProject(proj.id)
+                  }
                   className="text-gray-700 hover:text-black text-base cursor-pointer p-1 shrink-0"
                 >
                   <BiExport />
                 </button>
               </div>
             ))}
+
             {profile && profile.projects?.length === 0 && (
               <div className="text-center text-gray-400 text-[11px] py-2">
                 پروژه‌ای برای این کاربر ثبت نشده است.
@@ -363,8 +574,12 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
           </div>
         </div>
 
+        {/* Roles */}
         <div className="flex flex-col gap-1 text-right relative">
-          <h4 className="text-[14px] font-bold text-black">نقش کاربر</h4>
+          <h4 className="text-[14px] font-bold text-black">
+            نقش کاربر
+          </h4>
+
           <div className="w-full border border-black rounded-[5px] p-2.5 bg-white flex flex-col gap-2 min-h-[60px]">
             <div className="flex flex-wrap gap-2">
               {roles.map((r, index) => (
@@ -373,6 +588,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
                   className="bg-[#dbeaff] text-[#1e40af] border border-blue-300 rounded-[4px] px-2.5 py-0.5 text-[11px] font-bold flex items-center gap-1.5"
                 >
                   {r}
+
                   <BiX
                     onClick={() => handleRemoveRole(r)}
                     className="cursor-pointer text-sm hover:text-red-600"
@@ -384,7 +600,9 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
             <div className="relative mt-auto">
               <button
                 type="button"
-                onClick={() => setShowRoleDrop(!showRoleDrop)}
+                onClick={() =>
+                  setShowRoleDrop(!showRoleDrop)
+                }
                 className="text-[11px] text-gray-400 hover:text-black flex items-center justify-end gap-1 font-medium cursor-pointer mr-auto"
               >
                 افزودن نقش <BiPlus />
@@ -407,6 +625,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
           </div>
         </div>
 
+        {/* Save */}
         <div className="w-full flex justify-end mt-2">
           <button
             type="button"
@@ -414,7 +633,9 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
             disabled={isSaving}
             className="w-[180px] h-[38px] bg-white border border-black text-black text-[12px] font-bold rounded-[5px] shadow-[0_3px_0_0_#000000] active:translate-y-[1.5px] active:shadow-none transition-all cursor-pointer text-center disabled:opacity-60"
           >
-            {isSaving ? "در حال ثبت..." : "تایید و اعمال تغییرات"}
+            {isSaving
+              ? "در حال ثبت..."
+              : "تایید و اعمال تغییرات"}
           </button>
         </div>
       </div>

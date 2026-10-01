@@ -1156,3 +1156,44 @@ export async function getLogs(params = {}) {
     return { logs: [], pagination: { page: 1, limit: 30, totalDocs: 0, totalPages: 0 } };
   }
 }
+
+
+export async function downloadReportPdf(filters) {
+  const token = localStorage.getItem("accessToken");
+  try {
+    const response = await fetch(`${BASE_URL}/reports/generate-pdf`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(filters)
+    });
+
+    if (!response.ok) {
+      throw new Error("خطا در دریافت فایل گزارش");
+    }
+
+    // تبدیل رسپانس به Blob (فایل باینری)
+    const blob = await response.blob();
+    
+    // ساخت یک لینک موقت برای دانلود فایل
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    // اسم فایل دانلودی:
+    link.setAttribute("download", `گزارش_${new Date().toLocaleDateString("fa-IR")}.pdf`);
+    
+    document.body.appendChild(link);
+    link.click();
+    
+    // پاکسازی
+    link.parentNode.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+    return { ok: true };
+  } catch (err) {
+    console.error("PDF Download Error:", err);
+    return { ok: false, message: err.message };
+  }
+}

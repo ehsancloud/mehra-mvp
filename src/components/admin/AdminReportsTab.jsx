@@ -70,6 +70,7 @@ const AdminReportsTab = () => {
 
   const [reportResult, setReportResult] = useState(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   const handlePreviewReport = async () => {
     setIsLoadingReport(true);
@@ -87,6 +88,56 @@ const AdminReportsTab = () => {
       setReportResult(res.report);
     } else {
       alert(res.message || "خطا در دریافت گزارش");
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    setIsDownloadingPdf(true);
+    
+    const filters = {
+      type: selectedReportType,
+      projectStatus,
+      paymentStatus,
+      dateBasis,
+      fromDate,
+      toDate,
+    };
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      
+      const response = await fetch("http://localhost:3000/api/reports/generate-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify(filters)
+      });
+
+      if (!response.ok) {
+        throw new Error("خطا در ارتباط با سرور برای تولید گزارش");
+      }
+
+      // دریافت داده باینری (Blob)
+      const blob = await response.blob();
+      
+      // ساخت لینک موقت و دانلود خودکار
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `گزارش_${new Date().toLocaleDateString("fa-IR")}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      
+      // پاکسازی
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("PDF Download Error:", error);
+      alert("مشکلی در تولید یا دانلود فایل PDF پیش آمد.");
+    } finally {
+      setIsDownloadingPdf(false);
     }
   };
 
@@ -321,8 +372,8 @@ const AdminReportsTab = () => {
           </fieldset>
         </div>
 
-        {/* Preview button */}
-        <div className="flex justify-start w-full mt-2">
+        {/* Preview and Download buttons */}
+        <div className="flex justify-start gap-4 w-full mt-2">
           <button
             type="button"
             disabled={isLoadingReport}
@@ -330,6 +381,15 @@ const AdminReportsTab = () => {
             className="w-[160px] h-[36px] bg-[#1c1c1e] text-white border border-black rounded-[5px] text-[12px] font-bold shadow-[0_2.5px_0_0_#000000] active:translate-y-[1px] cursor-pointer transition-all disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoadingReport ? "در حال دریافت..." : "پیش نمایش گزارش"}
+          </button>
+          
+          <button
+            type="button"
+            disabled={isDownloadingPdf}
+            onClick={handleDownloadPdf}
+            className="w-[160px] h-[36px] bg-white text-black border border-black rounded-[5px] text-[12px] font-bold shadow-[0_2.5px_0_0_#000000] active:translate-y-[1px] cursor-pointer transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+            {isDownloadingPdf ? "در حال تولید PDF..." : "دانلود گزارش (PDF)"}
           </button>
         </div>
       </div>

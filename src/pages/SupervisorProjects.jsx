@@ -161,7 +161,7 @@ const SupervisorProjects = () => {
             projects.map((project) => (
               <div
                 key={project.id}
-                className={`w-[657px] bg-white border rounded-[5px] shadow-[0_4px_0_0_#000000] p-4 flex justify-between items-stretch select-none shrink-0 relative transition-all hover:translate-y-[1px]
+                className={`mt-4 w-[657px] bg-white border rounded-[5px] shadow-[0_4px_0_0_#000000] p-4 flex justify-between items-stretch select-none shrink-0 relative transition-all hover:translate-y-[1px]
                   ${project.isSuperProject ? "border-[#3b82f6]" : "border-black"}
                 `}
                 style={{ fontFamily: "Pinar-FD" }}
@@ -298,7 +298,7 @@ const SupervisorProjects = () => {
                       مشاهده جزئیات
                     </button>
 
-                    {!project.isSuperProject && project.stage === "open" && (
+                    {!project.isSuperProject && (project.stage === "open" || project.stage === "active") && (
                       <button
                         type="button"
                         onClick={() => {
@@ -307,7 +307,7 @@ const SupervisorProjects = () => {
                         }}
                         className="flex-1 h-[36px] border border-black rounded text-[12px] font-bold bg-white text-black cursor-pointer shadow-[0_2px_0_0_#000000] active:translate-y-[1px] text-center"
                       >
-                        ارجاء
+                        ارجاع
                       </button>
                     )}
 

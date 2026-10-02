@@ -111,7 +111,9 @@ function mapProject(p) {
     ticketIds: p.ticketIds || [],
     payments: p.payments || [],
     reviews: p.reviews || [],
-    subProjects: p.subProjectsIds || [],
+    subProjects: Array.isArray(p.subProjectsIds) 
+      ? p.subProjectsIds.map(sub => typeof sub === "object" && sub !== null ? mapProject(sub) : sub) 
+      : [],
     freelancersList: freelancers.map((f) => {
       const fTicket = p.ticketIds?.find(
         (t) => (t.userId?._id || t.userId)?.toString() === f._id?.toString()

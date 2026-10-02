@@ -83,7 +83,7 @@ const ProjectCard = ({
     <div
       dir="rtl"
       className={`
-        border rounded-[5px] p-4 flex justify-between items-stretch w-[657px] select-none shrink-0 transition-all duration-200 relative
+        mt-4 border rounded-[5px] p-4 flex justify-between items-stretch w-[657px] select-none shrink-0 transition-all duration-200 relative
         ${cardMinHeight} ${borderStyles} ${bgStyles}
       `}
       style={{ fontFamily: "Pinar-FD" }}

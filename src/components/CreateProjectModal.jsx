@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from "react";
 import { BiChevronDown, BiCloudUpload, BiX, BiPlus, BiTrash } from "react-icons/bi";
 import { getDepartments, getPriorities, getTickets, createProject, uploadFile } from "../data/api";
+import { LEVEL_LABELS } from "../utils/projectLevels";
+
 const emptySubProject = () => ({
   key: `sub-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   title: "",
   cost: "",
+  proposalBudget: "",
   deadline: "",
+  level: "c",
+  editCount: 1,
 });
 
 const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
@@ -15,6 +20,7 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
 
   const [title, setTitle] = useState("");
   const [cost, setCost] = useState("");
+  const [proposalBudget, setProposalBudget] = useState("");
   const [deadline, setDeadline] = useState("");
   const [description, setDescription] = useState("");
 
@@ -25,6 +31,10 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
   const [showPriorityDrop, setShowPriorityDrop] = useState(false);
   const [showDeptDrop, setShowDeptDrop] = useState(false);
   const [showTicketDrop, setShowTicketDrop] = useState(false);
+  const [showLevelDrop, setShowLevelDrop] = useState(false);
+
+  const [level, setLevel] = useState("c");
+  const [editCount, setEditCount] = useState(1);
 
   const [briefFile, setBriefFile] = useState(null);
 
@@ -51,12 +61,15 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
   const resetForm = () => {
     setTitle("");
     setCost("");
+    setProposalBudget("");
     setDeadline("");
     setDescription("");
     setPriority("تعیین نشده");
     setDepartment("تعیین نشده");
     setTicket("بدون تیکت مرتبط");
     setBriefFile(null);
+    setLevel("c");
+    setEditCount(1);
     setIsSuperProject(false);
     setSubProjects([emptySubProject()]);
   };
@@ -96,15 +109,23 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
       title,
       description,
       priority,
-      department, // اگر بک‌اند نام دپارتمان را هندل می‌کند همین کافیست، وگرنه باید ID آن باشد
+      department,
       deadline,
-      budget: Number(cost), // تغییر cost به budget و تبدیل به عدد
-      proposalBudget: Number(cost) || 0, // برای فرم تبدیل تیکت
+      budget: Number(cost) || 0,
+      proposalBudget: Number(proposalBudget) || Number(cost) || 0,
       ticketId: tickets.find((t) => `تیکت ${t.id}` === ticket)?.id || null,
       briefFileUrl,
+      level,
+      editCount: Number(editCount) || 1,
       isSuperProject,
       subProjects: isSuperProject
-        ? subProjects.filter((sp) => sp.title.trim()).map(sp => ({...sp, budget: Number(sp.cost)})) 
+        ? subProjects.filter((sp) => sp.title.trim()).map(sp => ({
+            ...sp, 
+            budget: Number(sp.cost) || 0,
+            proposalBudget: Number(sp.proposalBudget) || Number(sp.cost) || Number(proposalBudget) || 0,
+            level: sp.level || level || "c",
+            editCount: Number(sp.editCount) || Number(editCount) || 1
+          })) 
         : undefined,
     };
 
@@ -317,14 +338,78 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
 
                   <div className="relative w-full">
                     <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                      بودجه پیشنهادی کارفرما (تومان)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="مثلاً 5000000"
+                      value={proposalBudget}
+                      onChange={(e) => setProposalBudget(e.target.value)}
+                      className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
+                    />
+                  </div>
+
+                  <div className="relative w-full">
+                    <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
                       زمان تحویل
                     </label>
                     <input
                       type="text"
+                      placeholder="مثلاً 1405/05/15"
                       value={deadline}
                       onChange={(e) => setDeadline(e.target.value)}
                       className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
                     />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="relative w-full">
+                      <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                        سطح
+                      </label>
+                      <div
+                        onClick={() => {
+                          setShowLevelDrop(!showLevelDrop);
+                          setShowPriorityDrop(false);
+                          setShowDeptDrop(false);
+                          setShowTicketDrop(false);
+                        }}
+                        className="w-full h-[40px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-white cursor-pointer"
+                      >
+                        <BiChevronDown className="text-xl" />
+                        <span className="font-bold text-black">{LEVEL_LABELS[level] || LEVEL_LABELS.c}</span>
+                      </div>
+
+                      {showLevelDrop && (
+                        <div className="absolute top-[44px] right-0 left-0 bg-white border border-black rounded-[5px] shadow-[0_3px_0_0_#000000] flex flex-col p-1 z-30">
+                          {Object.keys(LEVEL_LABELS).map((code) => (
+                            <div
+                              key={code}
+                              onClick={() => {
+                                setLevel(code);
+                                setShowLevelDrop(false);
+                              }}
+                              className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
+                            >
+                              {LEVEL_LABELS[code]}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="relative w-full">
+                      <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                        تعداد ویرایش
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={editCount}
+                        onChange={(e) => setEditCount(e.target.value)}
+                        className="w-full h-[40px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
+                      />
+                    </div>
                   </div>
                 </>
               )}
@@ -362,42 +447,74 @@ const CreateProjectModal = ({ isOpen, onClose, onCreated }) => {
               {subProjects.map((sp, index) => (
                 <div
                   key={sp.key}
-                  className="w-full grid grid-cols-[1fr_140px_140px_36px] gap-2 items-center"
+                  className="w-full flex flex-col gap-2 border border-gray-200 p-2 rounded-[5px] bg-gray-50"
                 >
-                  <input
-                    type="text"
-                    placeholder={`عنوان زیرپروژه ${index + 1}`}
-                    value={sp.title}
-                    onChange={(e) =>
-                      handleSubProjectChange(sp.key, "title", e.target.value)
-                    }
-                    className="h-[38px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
-                  />
-                  <input
-                    type="text"
-                    placeholder="هزینه"
-                    value={sp.cost}
-                    onChange={(e) =>
-                      handleSubProjectChange(sp.key, "cost", e.target.value)
-                    }
-                    className="h-[38px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
-                  />
-                  <input
-                    type="text"
-                    placeholder="ددلاین"
-                    value={sp.deadline}
-                    onChange={(e) =>
-                      handleSubProjectChange(sp.key, "deadline", e.target.value)
-                    }
-                    className="h-[38px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveSubProject(sp.key)}
-                    className="h-[38px] w-[36px] flex items-center justify-center border border-black rounded-[5px] text-red-600 hover:bg-red-50 cursor-pointer"
-                  >
-                    <BiTrash />
-                  </button>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder={`عنوان زیرپروژه ${index + 1}`}
+                      value={sp.title}
+                      onChange={(e) =>
+                        handleSubProjectChange(sp.key, "title", e.target.value)
+                      }
+                      className="flex-1 h-[38px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveSubProject(sp.key)}
+                      className="h-[38px] w-[36px] flex items-center justify-center border border-black rounded-[5px] text-red-600 hover:bg-red-50 cursor-pointer shrink-0"
+                    >
+                      <BiTrash />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
+                    <input
+                      type="text"
+                      placeholder="هزینه"
+                      value={sp.cost}
+                      onChange={(e) =>
+                        handleSubProjectChange(sp.key, "cost", e.target.value)
+                      }
+                      className="h-[38px] border border-black rounded-[5px] px-2 text-[12px] text-black focus:outline-none bg-white font-mono"
+                    />
+                    <input
+                      type="text"
+                      placeholder="بودجه پیشنهادی"
+                      value={sp.proposalBudget || ""}
+                      onChange={(e) =>
+                        handleSubProjectChange(sp.key, "proposalBudget", e.target.value)
+                      }
+                      className="h-[38px] border border-black rounded-[5px] px-2 text-[12px] text-black focus:outline-none bg-white font-mono"
+                    />
+                    <input
+                      type="text"
+                      placeholder="ددلاین"
+                      value={sp.deadline}
+                      onChange={(e) =>
+                        handleSubProjectChange(sp.key, "deadline", e.target.value)
+                      }
+                      className="h-[38px] border border-black rounded-[5px] px-2 text-[12px] text-black focus:outline-none bg-white"
+                    />
+                    <select
+                      value={sp.level}
+                      onChange={(e) => handleSubProjectChange(sp.key, "level", e.target.value)}
+                      className="h-[38px] border border-black rounded-[5px] px-2 text-[12px] text-black focus:outline-none bg-white font-bold cursor-pointer"
+                    >
+                      {Object.keys(LEVEL_LABELS).map(code => (
+                        <option key={code} value={code}>{LEVEL_LABELS[code]}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="تعداد ویرایش"
+                      value={sp.editCount}
+                      onChange={(e) =>
+                        handleSubProjectChange(sp.key, "editCount", e.target.value)
+                      }
+                      className="h-[38px] border border-black rounded-[5px] px-2 text-[12px] text-black focus:outline-none bg-white"
+                    />
+                  </div>
                 </div>
               ))}
             </div>

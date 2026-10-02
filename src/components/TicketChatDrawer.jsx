@@ -9,9 +9,11 @@ import {
   BiCheckDouble,
   BiDollarCircle,
   BiLock,
+  BiShare
 } from "react-icons/bi";
 import ConvertToProjectModal from "./ConvertToProjectModal";
 import EditPriceModal from "./EditPriceModal";
+import ForwardMessageModal from "./ForwardMessageModal";
 import {
   getTicketById,
   getTicketMessages,
@@ -46,6 +48,8 @@ const TicketChatDrawer = () => {
 
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false);
   const [isEditPriceOpen, setIsEditPriceOpen] = useState(false);
+  const [isForwardModalOpen, setIsForwardModalOpen] = useState(false);
+  const [forwardMessage, setForwardMessage] = useState(null);
 
   useEffect(() => {
     if (!isOpen || !activeTicketId) return;
@@ -100,6 +104,22 @@ const TicketChatDrawer = () => {
     if (!window.confirm("آیا از حذف این تیکت اطمینان دارید؟")) return;
     await deleteTicket(activeTicketId);
     closeChat();
+  };
+
+  const handleForwardConfirm = async (targetTicketId) => {
+    if (!forwardMessage) return;
+
+    const result = await sendTicketMessage({
+      ticketId: targetTicketId,
+      text: forwardMessage.text || undefined,
+      fileUrl: forwardMessage.fileUrl || undefined,
+    });
+
+    if (!result.ok) {
+      alert("ارسال پیام (فوروارد) با خطا مواجه شد.");
+    } else {
+      alert("پیام با موفقیت فوروارد شد.");
+    }
   };
 
   const handleVerifyFreelancer = async () => {
@@ -222,6 +242,18 @@ const TicketChatDrawer = () => {
                 <div className="flex items-center gap-1 mt-1 text-[10px] text-gray-400 px-1">
                   <span>{msg.time}</span>
                   {isMe && <BiCheckDouble className="text-blue-500 text-sm" />}
+                  {isPrivilegedPanel && (
+                    <button
+                      onClick={() => {
+                        setForwardMessage(msg);
+                        setIsForwardModalOpen(true);
+                      }}
+                      className="mr-2 flex items-center gap-0.5 text-blue-500 hover:text-blue-700 cursor-pointer"
+                      title="فوروارد پیام"
+                    >
+                      <BiShare /> فوروارد
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -331,6 +363,15 @@ const TicketChatDrawer = () => {
         isOpen={isEditPriceOpen}
         onClose={() => setIsEditPriceOpen(false)}
         projectId={ticket?.relatedProjectId}
+      />
+
+      <ForwardMessageModal
+        isOpen={isForwardModalOpen}
+        onClose={() => {
+          setIsForwardModalOpen(false);
+          setForwardMessage(null);
+        }}
+        onForward={handleForwardConfirm}
       />
     </>
   );

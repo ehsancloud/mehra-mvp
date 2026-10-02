@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BiX, BiChevronDown, BiCloudUpload } from "react-icons/bi";
 import { getDepartments, getPriorities, getTickets, updateProject, uploadFile } from "../data/api";
+import { LEVEL_LABELS } from "../utils/projectLevels";
 
 const STAGE_OPTIONS = [
   { value: "open", label: "open (شروع نشده)" },
@@ -29,7 +30,9 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
   const [priority, setPriority] = useState("زیاد");
   const [department, setDepartment] = useState("");
   const [ticket, setTicket] = useState("تعیین نشده");
-  const [defaultFreelancerCost , setDefaultFreelancerCost] = useState("");
+  const [proposalBudget, setProposalBudget] = useState("");
+  const [level, setLevel] = useState("c");
+  const [editCount, setEditCount] = useState(1);
   const [stage, setStage] = useState("open");
   const [status, setStatus] = useState("در حال بررسی");
 
@@ -38,6 +41,7 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
   const [showTicketDrop, setShowTicketDrop] = useState(false);
   const [showStageDrop, setShowStageDrop] = useState(false);
   const [showStatusDrop, setShowStatusDrop] = useState(false);
+  const [showLevelDrop, setShowLevelDrop] = useState(false);
 
   const [briefFile, setBriefFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -57,7 +61,9 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
       setDescription(projectData.description || "");
       setPriority(projectData.priority || "زیاد");
       setDepartment(projectData.department || "");
-      setDefaultFreelancerCost(projectData.defaultFreelancerCost || 0);
+      setProposalBudget(projectData.proposalBudget || projectData.budget || 0);
+      setLevel(projectData.level || "c");
+      setEditCount(projectData.editCount || 1);
       setTicket(projectData.ticketId ? `تیکت ${projectData.ticketId}` : "تعیین نشده");
       setStage(projectData.stage || "open");
       setStatus(projectData.status || "در حال بررسی");
@@ -75,7 +81,7 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
       const uploadRes = await uploadFile(briefFile);
       if (!uploadRes.ok) {
         alert("آپلود فایل جدید با خطا مواجه شد.");
-        setIsSubmitting(false);
+        setIsSaving(false);
         return;
       }
       briefFileUrl = uploadRes.url;
@@ -84,13 +90,15 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
     const result = await updateProject(projectData.id, {
       title,
       budget: Number(cost) || 0,
-      proposalBudget: Number(defaultFreelancerCost || 0),
+      proposalBudget: Number(proposalBudget || 0),
       deadline,
       description,
       priority,
       department,
       stage,
       status,
+      level,
+      editCount: Number(editCount) || 1,
       ticketId: tickets.find((t) => `تیکت ${t.id}` === ticket)?.id || null,
       briefFileUrl // ارسال آدرس جدید به بک‌اند
     });
@@ -270,7 +278,19 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
                   type="text"
                   value={cost}
                   onChange={(e) => setCost(e.target.value)}
-                  className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
+                  className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
+                />
+              </div>
+
+              <div className="relative w-full">
+                <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                  بودجه پیشنهادی کارفرما (تومان)
+                </label>
+                <input
+                  type="text"
+                  value={proposalBudget}
+                  onChange={(e) => setProposalBudget(e.target.value)}
+                  className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white font-mono"
                 />
               </div>
 
@@ -284,6 +304,58 @@ const EditProjectModal = ({ isOpen, onBack, projectData }) => {
                   onChange={(e) => setDeadline(e.target.value)}
                   className="w-full h-[42px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative w-full">
+                  <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                    سطح
+                  </label>
+                  <div
+                    onClick={() => {
+                      setShowLevelDrop(!showLevelDrop);
+                      setShowPriorityDrop(false);
+                      setShowDeptDrop(false);
+                      setShowTicketDrop(false);
+                      setShowStageDrop(false);
+                      setShowStatusDrop(false);
+                    }}
+                    className="w-full h-[40px] border border-black rounded-[5px] px-3 flex items-center justify-between text-[12px] bg-white cursor-pointer"
+                  >
+                    <BiChevronDown className="text-xl" />
+                    <span className="font-bold text-black">{LEVEL_LABELS[level] || LEVEL_LABELS.c}</span>
+                  </div>
+
+                  {showLevelDrop && (
+                    <div className="absolute top-[44px] right-0 left-0 bg-white border border-black rounded-[5px] shadow-[0_3px_0_0_#000000] flex flex-col p-1 z-30">
+                      {Object.keys(LEVEL_LABELS).map((code) => (
+                        <div
+                          key={code}
+                          onClick={() => {
+                            setLevel(code);
+                            setShowLevelDrop(false);
+                          }}
+                          className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
+                        >
+                          {LEVEL_LABELS[code]}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="relative w-full">
+                  <label className="absolute -top-[10px] right-3 bg-white px-1 text-[11px] text-gray-500 font-medium z-10">
+                    تعداد ویرایش
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={editCount}
+                    onChange={(e) => setEditCount(e.target.value)}
+                    className="w-full h-[40px] border border-black rounded-[5px] px-3 text-[12px] text-black focus:outline-none bg-white"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

@@ -20,6 +20,13 @@ const formatPrice = (price) => {
 
 const ALL_ROLES = ["freelancer", "employer", "supervisor", "user"];
 
+const ROLE_MAP = {
+  freelancer: "فریلنسر",
+  employer: "کارفرما",
+  supervisor: "ناظر",
+  user: "عادی",
+};
+
 const FREELANCER_LEVELS = Object.values(LEVEL_LABELS);
 
 const levelLabelToCode = (label) =>
@@ -43,6 +50,8 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
   const [level, setLevel] = useState(LEVEL_LABELS.c);
   const [income, setIncome] = useState(0);
   const [skills, setSkills] = useState([]);
+  const [rateScore, setRateScore] = useState(0);
+  const [availableForProposals, setAvailableForProposals] = useState(false);
 
   const [roles, setRoles] = useState([]);
 
@@ -116,6 +125,8 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
 
       setIncome(p.income || 0);
       setSkills(p.skills || []);
+      setRateScore(p.rateScore || 0);
+      setAvailableForProposals(p.availableForProposals || false);
       setRoles(p.roles || []);
 
       // Supervisor departments
@@ -192,6 +203,8 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
         ? {
             level: levelLabelToCode(level),
             skills,
+            rateScore: Number(rateScore),
+            availableForProposals,
           }
         : {}),
 
@@ -394,6 +407,35 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3 items-center mt-1">
+              <div className="flex flex-col gap-1">
+                <label className="text-[11px] text-gray-500 font-medium">
+                  امتیاز
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.1"
+                  value={rateScore}
+                  onChange={(e) => setRateScore(e.target.value)}
+                  className="w-full h-[38px] border border-black rounded-[5px] px-3 text-[12px] bg-white text-center font-bold"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1 mt-2">
+                <label className="flex items-center gap-2 cursor-pointer mt-3">
+                  <span className="text-[11px] text-gray-500 font-medium">آماده دریافت پروژه</span>
+                  <input
+                    type="checkbox"
+                    checked={availableForProposals}
+                    onChange={(e) => setAvailableForProposals(e.target.checked)}
+                    className="w-8 h-4 bg-gray-300 checked:bg-green-500 rounded-full appearance-none relative cursor-pointer transition-all before:content-[''] before:w-3 before:h-3 before:bg-white before:rounded-full before:absolute before:top-0.5 before:right-0.5 checked:before:translate-x-[-16px] before:transition-all"
+                  />
+                </label>
+              </div>
+            </div>
+
             {/* Freelancer Departments / Skills */}
             <div className="flex flex-col gap-1 mt-1 relative">
               <label className="text-[11px] text-gray-500 font-medium">
@@ -587,7 +629,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
                   key={index}
                   className="bg-[#dbeaff] text-[#1e40af] border border-blue-300 rounded-[4px] px-2.5 py-0.5 text-[11px] font-bold flex items-center gap-1.5"
                 >
-                  {r}
+                  {ROLE_MAP[r] || r}
 
                   <BiX
                     onClick={() => handleRemoveRole(r)}
@@ -616,7 +658,7 @@ const UserProfileModal = ({ isOpen, onClose, user }) => {
                       onClick={() => handleAddRole(r)}
                       className="px-3 py-1.5 text-[11px] hover:bg-gray-100 rounded cursor-pointer text-right font-medium text-black"
                     >
-                      {r}
+                      {ROLE_MAP[r] || r}
                     </div>
                   ))}
                 </div>

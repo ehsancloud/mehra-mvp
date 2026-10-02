@@ -287,6 +287,16 @@ const UserHeader = () => {
             </div>
 
             <button
+              onClick={() => {
+                setShowProfileModal(false);
+                navigate("/role-selection");
+              }}
+              className="w-full h-[40px] bg-blue-600 text-white rounded-[5px] text-[13px] font-bold mt-2 cursor-pointer hover:bg-blue-700 transition-colors"
+            >
+              انتخاب نقش
+            </button>
+
+            <button
               onClick={handleLogout}
               className="w-full h-[40px] bg-red-600 text-white rounded-[5px] text-[13px] font-bold mt-2 cursor-pointer hover:bg-red-700 transition-colors"
             >

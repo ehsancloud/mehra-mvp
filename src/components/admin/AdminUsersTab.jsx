@@ -26,6 +26,10 @@ const AdminUsersTab = () => {
   };
 
   const filteredUsers = users.filter((u) => {
+    const userRoles = u.roles && u.roles.length > 0 ? u.roles : ["normal"];
+    const matchesRole = userRoles.some((r) => roleFilters[r]);
+    if (!matchesRole) return false;
+
     if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
     return (

@@ -336,6 +336,7 @@ const USER_UPDATABLE_FIELDS = [
 const FREELANCER_UPDATABLE_FIELDS = [
   "level",
   "availableForProposals",
+  "rateScore"
 ];
 const SUPERVISOR_UPDATEABLE_FIELDS = [
   "departments"
@@ -388,10 +389,12 @@ const updateUser = asyncHandler(async (req, res) => {
   }
 
   const userPatch = {};
-  if(req.user.role === "admin"){
-    USER_UPDATABLE_FIELDS.push("roles")
+  const allowedFields = [...USER_UPDATABLE_FIELDS, "username", "email", "phone"];
+  if (req.user.role === "admin") {
+    allowedFields.push("roles");
   }
-  for (const field of USER_UPDATABLE_FIELDS) {
+
+  for (const field of allowedFields) {
     if (req.body[field] !== undefined) {
       userPatch[field] = req.body[field];
     }

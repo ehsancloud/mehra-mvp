@@ -2,86 +2,216 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>گزارش سیستمی</title>
+    <title><%= reportTitle || 'گزارش سیستم' %></title>
     <style>
-        @font-face {
-            font-family: 'Pinar';
-            /* مسیر فونت رو میتونی به یک لینک CDN یا Base64 تغییر بدی تا حتما لود بشه */
-            src: url('https://your-domain.com/fonts/Pinar-Regular.woff2') format('woff2');
+        @page {
+            size: A4 landscape;
+            margin: 10mm;
+        }
+        * {
+            box-sizing: border-box;
         }
         body {
-            font-family: 'Pinar', Tahoma, sans-serif;
+            font-family: 'Vazirmatn', 'Sahel', 'Tahoma', 'Segoe UI', Arial, sans-serif;
+            direction: rtl;
             margin: 0;
-            padding: 20px;
-            color: #333;
+            padding: 12px;
+            color: #1a1a1a;
+            background-color: #ffffff;
+            font-size: 11px;
+            line-height: 1.5;
         }
         .header {
             display: flex;
             justify-content: space-between;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
+            align-items: center;
+            border-bottom: 2px solid #2563eb;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
         }
+        .header h1 {
+            margin: 0 0 6px 0;
+            font-size: 18px;
+            color: #0f172a;
+        }
+        .header p {
+            margin: 2px 0;
+            color: #475569;
+            font-size: 11px;
+        }
+        .meta-info {
+            text-align: left;
+            font-size: 11px;
+            color: #334155;
+        }
+
+        /* Summary Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        .stat-card {
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            text-align: center;
+        }
+        .stat-title {
+            font-size: 10px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #0f172a;
+        }
+
+        /* Table */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
+            margin-top: 10px;
+            font-size: 10.5px;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
+            border: 1px solid #cbd5e1;
+            padding: 8px 6px;
             text-align: center;
-            font-size: 12px;
+            vertical-align: middle;
         }
         th {
-            background-color: #f4f4f4;
+            background-color: #f1f5f9;
+            color: #1e293b;
             font-weight: bold;
+            font-size: 11px;
         }
-        .total {
-            margin-top: 20px;
-            text-align: left;
-            font-weight: bold;
+        tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+        tr {
+            page-break-inside: avoid;
+        }
+        .text-right {
+            text-align: right;
+            padding-right: 10px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 9.5px;
+            font-weight: 500;
+            background-color: #e2e8f0;
+            color: #334155;
+        }
+        .badge-active {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .badge-completed {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: #64748b;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 8px;
         }
     </style>
 </head>
 <body>
     <div class="header">
         <div>
-            <h2>گزارش سیستمی: <%= reportTitle %></h2>
+            <h1>گزارش سیستمی: <%= reportTitle %></h1>
             <p>بازه زمانی: <%= startDate %> تا <%= endDate %></p>
         </div>
-        <div>
-            <p>تاریخ گزارش: <%= currentDate %></p>
+        <div class="meta-info">
+            <p>تاریخ صدور گزارش: <strong><%= currentDate %></strong></p>
+        </div>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-title">تعداد کل پروژه‌ها</div>
+            <div class="stat-value"><%= (totalProjects || 0).toLocaleString('fa-IR') %></div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">مجموع مبالغ بودجه</div>
+            <div class="stat-value"><%= (totalAmount || 0).toLocaleString('fa-IR') %> تومان</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">مجموع مبالغ پرداختی</div>
+            <div class="stat-value"><%= (totalPaid || 0).toLocaleString('fa-IR') %> تومان</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-title">میانگین بودجه هر پروژه</div>
+            <div class="stat-value"><%= (avgBudget || 0).toLocaleString('fa-IR') %> تومان</div>
         </div>
     </div>
 
     <table>
         <thead>
             <tr>
-                <th>#</th>
-                <th>عنوان پروژه</th>
-                <th>همکار</th>
-                <th>تاریخ</th>
+                <th style="width: 35px;">#</th>
+                <th class="text-right">عنوان پروژه</th>
+                <th>کارفرما</th>
+                <th>ناظر</th>
                 <th>وضعیت</th>
-                <th>مبلغ (تومان)</th>
+                <th>بودجه (تومان)</th>
+                <th>پرداختی (تومان)</th>
+                <th>مهلت تحویل</th>
             </tr>
         </thead>
         <tbody>
-            <% projects.forEach(function(project, index) { %>
+            <% if (projects && projects.length > 0) { %>
+                <% projects.forEach(function(project, index) { %>
+                    <tr>
+                        <td><%= (index + 1).toLocaleString('fa-IR') %></td>
+                        <td class="text-right font-medium"><%= project.title %></td>
+                        <td><%= project.employer %></td>
+                        <td><%= project.supervisor %></td>
+                        <td>
+                            <span class="badge <%= project.status === 'خاتمه یافته' ? 'badge-completed' : (project.status === 'در حال انجام' ? 'badge-active' : '') %>">
+                                <%= project.status %>
+                            </span>
+                        </td>
+                        <td><%= (project.budget || 0).toLocaleString('fa-IR') %></td>
+                        <td><%= (project.paidAmount || 0).toLocaleString('fa-IR') %></td>
+                        <td><%= project.deadline || '—' %></td>
+                    </tr>
+                <% }); %>
+            <% } else { %>
                 <tr>
-                    <td><%= index + 1 %></td>
-                    <td><%= project.title %></td>
-                    <td><%= project.colleagueName %></td>
-                    <td><%= project.date %></td>
-                    <td><%= project.status %></td>
-                    <td><%= project.amount.toLocaleString('fa-IR') %></td>
+                    <td colspan="8" style="padding: 20px; color: #64748b;">هیچ پروژه‌ای مطابق فیلترهای انتخابی یافت نشد.</td>
                 </tr>
-            <% }); %>
+            <% } %>
         </tbody>
+        <% if (projects && projects.length > 0) { %>
+            <tfoot>
+                <tr style="font-weight: bold; background-color: #f1f5f9;">
+                    <td colspan="5" class="text-right" style="padding-right: 12px;">جمع کل</td>
+                    <td><%= (totalAmount || 0).toLocaleString('fa-IR') %></td>
+                    <td><%= (totalPaid || 0).toLocaleString('fa-IR') %></td>
+                    <td>—</td>
+                </tr>
+            </tfoot>
+        <% } %>
     </table>
 
-    <div class="total">
-        <p>جمع کل: <%= totalAmount.toLocaleString('fa-IR') %> تومان</p>
+    <div class="footer">
+        <span>سامانه مدیریت پروژه‌ها</span>
+        <span>صفحه ۱ از ۱</span>
     </div>
 </body>
 </html>

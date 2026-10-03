@@ -237,35 +237,49 @@ const generateReportPdf = asyncHandler(async (req, res) => {
     avgBudget: reportData.summary.avgBudget,
   });
 
-  const browser = await puppeteer.launch({
-    headless: "new",
-    args: [
-      "--no-sandbox",
-      "--disable-setuid-sandbox",
-      "--disable-dev-shm-usage",
-      "--disable-gpu",
-    ],
-  });
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
+    });
 
-  const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: "networkidle0" });
+    const page = await browser.newPage();
+    
+    // Use networkidle2 or load to prevent hanging on slow network requests
+    await page.setContent(html, { waitUntil: ["load", "networkidle2"], timeout: 15000 });
 
-  const pdfBuffer = await page.pdf({
-    format: "A4",
-    landscape: true,
-    printBackground: true,
-    margin: { top: "12mm", bottom: "12mm", left: "12mm", right: "12mm" },
-  });
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      landscape: true,
+      printBackground: true,
+      margin: { top: "12mm", bottom: "12mm", left: "12mm", right: "12mm" },
+    });
 
-  await browser.close();
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": 'attachment; filename="report.pdf"',
+      "Content-Length": pdfBuffer.length,
+    });
 
-  res.set({
-    "Content-Type": "application/pdf",
-    "Content-Disposition": 'attachment; filename="report.pdf"',
-    "Content-Length": pdfBuffer.length,
-  });
-
-  res.end(pdfBuffer);
+    res.end(pdfBuffer);
+  } catch (error) {
+    console.error("PDF Generation Error:", error);
+    res.status(500).json({
+      ok: false,
+      message: "خطا در تولید فایل PDF. لطفاً مجدداً تلاش کنید.",
+      error: error.message
+    });
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
 });
 
 module.exports = {

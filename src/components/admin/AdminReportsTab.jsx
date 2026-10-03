@@ -1,5 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { getReports, getFinanceStats, previewReport } from "../../data/api";
+import {
+  getReports,
+  getFinanceStats,
+  previewReport,
+  downloadReportPdf,
+} from "../../data/api";
 import DatePickerModule from "react-multi-date-picker";
 import persian from "react-date-object/calendars/persian";
 import persian_fa from "react-date-object/locales/persian_fa";
@@ -93,7 +98,7 @@ const AdminReportsTab = () => {
 
   const handleDownloadPdf = async () => {
     setIsDownloadingPdf(true);
-    
+
     const filters = {
       type: selectedReportType,
       projectStatus,
@@ -104,35 +109,10 @@ const AdminReportsTab = () => {
     };
 
     try {
-      const token = localStorage.getItem("accessToken");
-      
-      const response = await fetch("http://localhost:3000/api/reports/generate-pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify(filters)
-      });
-
-      if (!response.ok) {
-        throw new Error("خطا در ارتباط با سرور برای تولید گزارش");
+      const result = await downloadReportPdf(filters);
+      if (!result.ok) {
+        alert(result.message || "مشکلی در تولید یا دانلود فایل PDF پیش آمد.");
       }
-
-      // دریافت داده باینری (Blob)
-      const blob = await response.blob();
-      
-      // ساخت لینک موقت و دانلود خودکار
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", `گزارش_${new Date().toLocaleDateString("fa-IR")}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      
-      // پاکسازی
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("PDF Download Error:", error);
       alert("مشکلی در تولید یا دانلود فایل PDF پیش آمد.");
@@ -405,18 +385,22 @@ const AdminReportsTab = () => {
           </div>
           
           {/* خلاصه آماری */}
-          <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="grid grid-cols-4 gap-3 mb-4">
             <div className="bg-gray-50 rounded p-3 text-center">
               <span className="text-[10px] text-gray-500 block">تعداد پروژه</span>
               <span className="text-[16px] font-bold">{reportResult.summary?.totalProjects?.toLocaleString("fa-IR") || 0}</span>
             </div>
             <div className="bg-gray-50 rounded p-3 text-center">
               <span className="text-[10px] text-gray-500 block">مجموع بودجه</span>
-              <span className="text-[16px] font-bold">{reportResult.summary?.totalBudget?.toLocaleString("fa-IR") || 0}</span>
+              <span className="text-[16px] font-bold">{reportResult.summary?.totalBudget?.toLocaleString("fa-IR") || 0} تومان</span>
+            </div>
+            <div className="bg-gray-50 rounded p-3 text-center">
+              <span className="text-[10px] text-gray-500 block">مجموع پرداختی</span>
+              <span className="text-[16px] font-bold">{reportResult.summary?.totalPaid?.toLocaleString("fa-IR") || 0} تومان</span>
             </div>
             <div className="bg-gray-50 rounded p-3 text-center">
               <span className="text-[10px] text-gray-500 block">میانگین بودجه</span>
-              <span className="text-[16px] font-bold">{reportResult.summary?.avgBudget?.toLocaleString("fa-IR") || 0}</span>
+              <span className="text-[16px] font-bold">{reportResult.summary?.avgBudget?.toLocaleString("fa-IR") || 0} تومان</span>
             </div>
           </div>
           
@@ -425,24 +409,32 @@ const AdminReportsTab = () => {
             <div className="overflow-x-auto">
               <table className="w-full text-[11px] text-right">
                 <thead>
-                  <tr className="border-b">
-                    <th className="p-2">عنوان</th>
-                    <th className="p-2">وضعیت</th>
-                    <th className="p-2">بودجه</th>
-                    <th className="p-2">پرداخت شده</th>
+                  <tr className="border-b bg-gray-50">
+                    <th className="p-2 text-center w-8">#</th>
+                    <th className="p-2">عنوان پروژه</th>
                     <th className="p-2">کارفرما</th>
                     <th className="p-2">ناظر</th>
+                    <th className="p-2 text-center">وضعیت</th>
+                    <th className="p-2">بودجه (تومان)</th>
+                    <th className="p-2">پرداخت شده (تومان)</th>
+                    <th className="p-2 text-center">مهلت تحویل</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reportResult.items.map((item, i) => (
                     <tr key={i} className="border-b hover:bg-gray-50">
+                      <td className="p-2 text-center font-mono">{(i + 1).toLocaleString("fa-IR")}</td>
                       <td className="p-2 font-medium">{item.title}</td>
-                      <td className="p-2">{item.status}</td>
-                      <td className="p-2">{item.budget?.toLocaleString("fa-IR")}</td>
-                      <td className="p-2">{item.paidAmount?.toLocaleString("fa-IR")}</td>
                       <td className="p-2">{item.employer}</td>
                       <td className="p-2">{item.supervisor}</td>
+                      <td className="p-2 text-center">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-gray-100 text-gray-700">
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="p-2 font-mono">{item.budget?.toLocaleString("fa-IR")}</td>
+                      <td className="p-2 font-mono">{item.paidAmount?.toLocaleString("fa-IR")}</td>
+                      <td className="p-2 text-center font-mono">{item.deadline || "—"}</td>
                     </tr>
                   ))}
                 </tbody>

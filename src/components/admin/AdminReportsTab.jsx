@@ -354,14 +354,14 @@ const AdminReportsTab = () => {
 
         {/* Preview and Download buttons */}
         <div className="flex justify-start gap-4 w-full mt-2">
-          <button
+          {/* <button
             type="button"
             disabled={isLoadingReport}
             onClick={handlePreviewReport}
             className="w-[160px] h-[36px] bg-[#1c1c1e] text-white border border-black rounded-[5px] text-[12px] font-bold shadow-[0_2.5px_0_0_#000000] active:translate-y-[1px] cursor-pointer transition-all disabled:opacity-70 disabled:cursor-not-allowed"
           >
             {isLoadingReport ? "در حال دریافت..." : "پیش نمایش گزارش"}
-          </button>
+          </button> */}
           
           <button
             type="button"

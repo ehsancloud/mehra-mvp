@@ -412,7 +412,7 @@ const ConvertToProjectModal = ({ isOpen, onClose, ticketId, ticketTitle, onCreat
                 </span>
                 <input
                   type="file"
-                  accept=".zip,.pdf,image/*"
+                  accept=".docx,.zip,.pdf,image/*"
                   onChange={(e) => setBriefFile(e.target.files[0])}
                   className="hidden"
                 />

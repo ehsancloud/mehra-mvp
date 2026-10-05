@@ -6,14 +6,22 @@ const multer = require("multer");
 const path = require("path");
 const crypto = require("crypto");
 const ApiError = require("../utils/ApiError");
-
 const ALLOWED_MIMES = [
-  "application/zip", "application/x-zip-compressed", "application/octet-stream",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream",
+
   "application/pdf",
-  "image/jpeg", "image/png", "image/gif", "image/webp"
+
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 ];
 
-const ALLOWED_EXTS = [".zip", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp"];
+const ALLOWED_EXTS = [".zip", ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp" , ".docx"];
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, path.join(__dirname, "../uploads")),
